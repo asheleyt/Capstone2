@@ -4,7 +4,7 @@
     <nav class="flex items-center justify-between bg-white px-6 py-3 shadow-sm">
       <div class="flex items-center">
         <span class="w-8 h-8 bg-gray-200 rounded-full mr-3"></span>
-        <span class="text-xl font-semibold">Admin</span>
+        <span class="text-xl font-semibold text-gray-800">Admin</span>
       </div>
       <div class="flex-1 flex justify-end items-center">
         <div class="flex items-center space-x-6">
@@ -13,7 +13,7 @@
           <span class="text-gray-700 font-semibold">Inventory Management/Order History</span>
           <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Sales Report</a>
           <a @click.prevent="goToManageUsers" class="text-gray-700 hover:underline cursor-pointer">Manage users</a>
-          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold">Logout</button>
+          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #ef4444 !important;">Logout</button>
         </div>
       </div>
     </nav>
@@ -128,7 +128,7 @@
     <div class="p-6 grid grid-cols-12 gap-6">
       <!-- Order History (Left) -->
       <div class="col-span-3 bg-white rounded-lg shadow flex flex-col h-[80vh]">
-        <h2 class="text-2xl font-bold p-6 pb-2">Order History</h2>
+        <h2 class="text-2xl font-bold p-6 pb-2 text-gray-800">Order History</h2>
         <div class="flex-1 overflow-y-auto px-6 pb-6">
           <div v-for="order in orders" :key="order.id" class="flex items-center justify-between py-3 border-b">
             <div class="flex items-center">
@@ -136,8 +136,8 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V20a2 2 0 01-2 2z" /></svg>
               </span>
               <div>
-                <div class="font-semibold">Order #{{ order.number }}</div>
-                <div class="text-xs text-gray-500">Date: {{ order.date }}</div>
+                <div class="font-semibold text-gray-800">Order #{{ order.number }}</div>
+                <div class="text-xs text-gray-700">Date: {{ order.date }}</div>
               </div>
             </div>
             <div class="font-semibold">${{ order.amount }}</div>
@@ -147,7 +147,7 @@
       <!-- Inventory (Right) -->
       <div class="col-span-9 bg-white rounded-lg shadow p-8 flex flex-col">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-3xl font-bold">Inventory Management</h2>
+          <h2 class="text-3xl font-bold text-gray-800">Inventory Management</h2>
           <div class="space-x-2">
             <button class="btn btn-outline" @click="openRawModal">Add Raw Material</button>
             <button class="btn btn-outline" @click="openProductModal">Add Product</button>
@@ -161,12 +161,12 @@
         <div v-else class="grid grid-cols-2 md:grid-cols-3 gap-6">
           <div v-for="item in filteredInventory" :key="item.id" class="border rounded-lg p-4 bg-gray-50 flex flex-col">
             <div class="flex justify-between items-center mb-2">
-              <div class="font-semibold">{{ item.name }}</div>
+              <div class="font-semibold text-gray-800">{{ item.name }}</div>
               <span v-if="isLowStock(item)" class="text-xs text-red-600 font-bold ml-2">Low Stock!</span>
               <button class="btn btn-link btn-xs" @click="openEditModal(item)">Edit</button>
               <button class="btn btn-link btn-xs btn-error" @click="discardItem(item.id)">Discard</button>
             </div>
-            <div class="text-xs text-gray-500 mb-2">Type: {{ item.type === 'raw' ? 'Raw Material' : 'Product' }}</div>
+            <div class="text-xs text-gray-700 mb-2">Type: {{ item.type === 'raw' ? 'Raw Material' : 'Product' }}</div>
             <div class="flex-1">
               <div v-for="batch in item.batches" :key="batch.id" class="mb-2 p-2 rounded border bg-white">
                 <div class="flex justify-between items-center">
@@ -501,3 +501,53 @@ const orders = computed(() => {
   }));
 });
 </script> 
+
+<style scoped>
+/* Improve font contrast for inventory management */
+.text-gray-400, .text-gray-500, .text-gray-300 {
+  color: #374151 !important;
+  opacity: 1 !important;
+}
+.text-xs, .text-sm, .text-gray-700, .text-gray-600 {
+  color: #1e293b !important;
+  opacity: 1 !important;
+}
+.font-semibold, .font-bold {
+  color: #1e293b !important;
+  font-weight: 700 !important;
+}
+.bg-white .text-xs, .bg-white .text-gray-700, .bg-white .text-gray-600 {
+  color: #1e293b !important;
+  opacity: 1 !important;
+}
+/* Batch info (Qty, Expiry) */
+.bg-white div, .bg-white span {
+  color: #1e293b !important;
+  opacity: 1 !important;
+}
+/* Add Raw Material and Add Product buttons */
+.btn.btn-outline {
+  color: #1e293b !important;
+  border-color: #6366f1 !important;
+  background: #e0e7ff !important;
+  font-weight: 700 !important;
+}
+.btn.btn-outline:disabled, .btn.btn-outline[disabled] {
+  color: #6b7280 !important;
+  background: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+  opacity: 1 !important;
+}
+/* Fix input text color and background for better contrast */
+.input, .input.input-bordered {
+  color: #1e293b !important;
+  background: #fff !important;
+  border-color: #d1d5db !important;
+}
+/* Fix input and select text color and background for better contrast in modals */
+.input, .input.input-bordered, .select, .select.select-bordered {
+  color: #1e293b !important;
+  background: #fff !important;
+  border-color: #d1d5db !important;
+}
+</style> 

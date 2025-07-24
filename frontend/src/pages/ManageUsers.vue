@@ -4,7 +4,7 @@
     <nav class="flex items-center justify-between bg-white px-6 py-3 shadow-sm">
       <div class="flex items-center">
         <span class="w-8 h-8 bg-gray-200 rounded-full mr-3"></span>
-        <span class="text-xl font-semibold">Admin</span>
+        <span class="text-xl font-semibold text-gray-800">Admin</span>
       </div>
       <div class="flex-1 flex justify-end items-center">
         <div class="flex items-center space-x-6">
@@ -28,7 +28,7 @@
 
     <!-- Main Content -->
     <div class="px-12 pt-8">
-      <h1 class="text-5xl font-semibold mb-8">Manage Users</h1>
+      <h1 class="text-5xl font-semibold mb-8 text-gray-800">Manage Users</h1>
       <div class="flex space-x-4 mb-8">
         <button class="btn btn-primary" @click="showAddUserModal = true">Add User</button>
         <button class="btn btn-error" disabled>Remove User</button>
@@ -41,30 +41,30 @@
 
       <!-- User List -->
       <div class="mb-8">
-        <h2 class="text-2xl font-semibold mb-4">Current Users</h2>
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">Current Users</h2>
         <div v-if="isLoadingUsers">Loading users...</div>
         <div v-if="usersError" class="text-red-600 mb-2">{{ usersError }}</div>
         <table v-if="filteredUsers.length" class="min-w-full bg-white border rounded">
           <thead>
             <tr>
-              <th class="px-4 py-2 border">ID</th>
-              <th class="px-4 py-2 border">Full Name</th>
-              <th class="px-4 py-2 border">Username</th>
-              <th class="px-4 py-2 border">Role</th>
-              <th class="px-4 py-2 border">Shift</th>
-              <th class="px-4 py-2 border">Salary</th>
-              <th class="px-4 py-2 border">Actions</th>
+              <th class="px-4 py-2 border text-gray-800">ID</th>
+              <th class="px-4 py-2 border text-gray-800">Full Name</th>
+              <th class="px-4 py-2 border text-gray-800">Username</th>
+              <th class="px-4 py-2 border text-gray-800">Role</th>
+              <th class="px-4 py-2 border text-gray-800">Shift</th>
+              <th class="px-4 py-2 border text-gray-800">Salary</th>
+              <th class="px-4 py-2 border text-gray-800">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="user in filteredUsers" :key="user.id">
-              <td class="px-4 py-2 border">{{ user.id }}</td>
-              <td class="px-4 py-2 border">{{ user.full_name }}</td>
-              <td class="px-4 py-2 border">{{ user.username }}</td>
-              <td class="px-4 py-2 border">{{ user.role }}</td>
-              <td class="px-4 py-2 border">{{ user.shift }}</td>
-              <td class="px-4 py-2 border">{{ user.salary }}</td>
-              <td class="px-4 py-2 border">
+              <td class="px-4 py-2 border text-gray-800">{{ user.id }}</td>
+              <td class="px-4 py-2 border text-gray-800">{{ user.full_name }}</td>
+              <td class="px-4 py-2 border text-gray-800">{{ user.username }}</td>
+              <td class="px-4 py-2 border text-gray-800">{{ user.role }}</td>
+              <td class="px-4 py-2 border text-gray-800">{{ user.shift }}</td>
+              <td class="px-4 py-2 border text-gray-800">{{ user.salary }}</td>
+              <td class="px-4 py-2 border text-gray-800">
                 <button class="text-blue-600 hover:underline mr-2" @click="openEditUser(user)">Edit</button>
                 <button class="text-red-600 hover:underline" @click="deleteUser(user.id)">Delete</button>
               </td>
@@ -78,20 +78,20 @@
       <div v-if="showEditUserModal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showEditUserModal = false">
         <div class="bg-white rounded-lg shadow-lg p-8 w-full max-w-md relative">
           <button class="absolute top-2 right-2 text-gray-500 hover:text-black text-2xl" @click="showEditUserModal = false">&times;</button>
-          <h2 class="text-2xl font-semibold mb-4">Edit User</h2>
+          <h2 class="text-2xl font-semibold mb-4 text-gray-800">Edit User</h2>
           <form @submit.prevent="submitEditUser">
             <div v-if="editFormMessage" class="mb-2 text-green-600">{{ editFormMessage }}</div>
             <div v-if="editFormError" class="mb-2 text-red-600">{{ editFormError }}</div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Full Name</label>
+              <label class="block mb-1 font-medium text-gray-800">Full Name</label>
               <input v-model="editUser.fullName" type="text" class="input input-bordered w-full" required />
             </div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Username</label>
+              <label class="block mb-1 font-medium text-gray-800">Username</label>
               <input v-model="editUser.username" type="text" class="input input-bordered w-full" required />
             </div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Role</label>
+              <label class="block mb-1 font-medium text-gray-800">Role</label>
               <select v-model="editUser.role" class="select select-bordered w-full" required>
                 <option value="">Select Role</option>
                 <option value="Cashier">Cashier</option>
@@ -100,11 +100,11 @@
               </select>
             </div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Shift Hours</label>
+              <label class="block mb-1 font-medium text-gray-800">Shift Hours</label>
               <input v-model="editUser.shift" type="text" class="input input-bordered w-full" required />
             </div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Salary</label>
+              <label class="block mb-1 font-medium text-gray-800">Salary</label>
               <input v-model="editUser.salary" type="number" min="0" class="input input-bordered w-full" required />
             </div>
             <button type="submit" class="btn btn-primary w-full" :disabled="isEditing">
@@ -119,24 +119,24 @@
       <div v-if="showAddUserModal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showAddUserModal = false">
         <div class="bg-white rounded-lg shadow-lg p-8 w-full max-w-md relative">
           <button class="absolute top-2 right-2 text-gray-500 hover:text-black text-2xl" @click="showAddUserModal = false">&times;</button>
-          <h2 class="text-2xl font-semibold mb-4">Add New User</h2>
+          <h2 class="text-2xl font-semibold mb-4 text-gray-800">Add New User</h2>
           <form @submit.prevent="submitAddUser">
             <div v-if="formMessage" class="mb-2 text-green-600">{{ formMessage }}</div>
             <div v-if="formError" class="mb-2 text-red-600">{{ formError }}</div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Full Name</label>
+              <label class="block mb-1 font-medium text-gray-800">Full Name</label>
               <input v-model="newUser.fullName" type="text" class="input input-bordered w-full" required />
             </div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Username</label>
+              <label class="block mb-1 font-medium text-gray-800">Username</label>
               <input v-model="newUser.username" type="text" class="input input-bordered w-full" required />
             </div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Password</label>
+              <label class="block mb-1 font-medium text-gray-800">Password</label>
               <input v-model="newUser.password" type="password" class="input input-bordered w-full" required />
             </div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Role</label>
+              <label class="block mb-1 font-medium text-gray-800">Role</label>
               <select v-model="newUser.role" class="select select-bordered w-full" required>
                 <option value="">Select Role</option>
                 <option value="Cashier">Cashier</option>
@@ -145,11 +145,11 @@
               </select>
             </div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Shift Hours</label>
+              <label class="block mb-1 font-medium text-gray-800">Shift Hours</label>
               <input v-model="newUser.shift" type="text" placeholder="e.g. 9am-5pm" class="input input-bordered w-full" required />
             </div>
             <div class="mb-4">
-              <label class="block mb-1 font-medium">Salary</label>
+              <label class="block mb-1 font-medium text-gray-800">Salary</label>
               <input v-model="newUser.salary" type="number" min="0" class="input input-bordered w-full" required />
             </div>
             <button type="submit" class="btn btn-primary w-full" :disabled="isSubmitting">

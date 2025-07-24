@@ -10,10 +10,6 @@
           </button>
         </nav>
       </div>
-      <button @click="handleLogout" class="flex items-center space-x-2 text-black hover:underline">
-        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/></svg>
-        <span>Logout</span>
-      </button>
     </aside>
 
     <!-- Main Content -->
@@ -22,15 +18,12 @@
       <header class="flex items-center justify-between bg-white px-8 py-4 shadow">
         <div class="flex items-center space-x-3">
           <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
-          <span class="text-xl font-semibold">Welcome, Cashier</span>
+          <span class="text-xl font-semibold text-gray-800">Welcome, Cashier</span>
         </div>
         <div class="flex-1 mx-8">
           <input type="text" placeholder="Search" class="input input-bordered w-full" />
         </div>
         <div class="flex space-x-3 items-center">
-          <button class="btn">Dine in</button>
-          <button class="btn">Take out</button>
-          <button class="btn">Discount</button>
           <button @click="handleLogout" class="btn ml-4">Logout</button>
         </div>
       </header>
@@ -47,21 +40,21 @@
       <!-- Main Grid -->
       <div class="flex-1 grid grid-cols-12 gap-6 px-8 py-6">
         <!-- Product Grid -->
-        <div class="col-span-8 grid grid-cols-3 gap-6">
-          <div v-for="n in 9" :key="n" class="bg-gray-200 rounded-lg flex flex-col items-center justify-center h-48 relative">
+        <div class="col-span-8 grid grid-cols-4 gap-6">
+          <div v-for="product in inventory" :key="product.id" class="bg-gray-200 rounded-lg flex flex-col items-center justify-center h-48 relative">
             <div class="w-20 h-20 border-2 border-gray-400 bg-white flex items-center justify-center mb-2">
               <!-- Placeholder for product image -->
               <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 17l6-6 4 4 8-8"/></svg>
             </div>
-            <span class="text-lg font-semibold">₱150.50</span>
-            <span class="absolute bottom-2 right-3 text-xs text-gray-700">stock: 12</span>
+            <span class="text-lg font-semibold text-gray-800">₱{{ product.price || '0.00' }}</span>
+            <span class="absolute bottom-2 right-3 text-xs text-gray-800">stock: {{ product.quantity || 0 }}</span>
           </div>
         </div>
 
         <!-- Current Order -->
         <div class="col-span-4 bg-white rounded-lg shadow p-6 flex flex-col">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-2xl font-bold">Current Order</h2>
+            <h2 class="text-2xl font-bold text-gray-800">Current Order</h2>
             <button class="btn">Add-On</button>
           </div>
           <div class="space-y-3 mb-6">
@@ -69,8 +62,8 @@
               <div class="flex items-center space-x-3">
                 <div class="w-8 h-8 bg-gray-300 rounded-full"></div>
                 <div>
-                  <div class="font-semibold">Product {{ String.fromCharCode(64 + item) }}</div>
-                  <div class="text-xs text-gray-500">{{ item }}x</div>
+                  <div class="font-semibold text-gray-800">Product {{ String.fromCharCode(64 + item) }}</div>
+                  <div class="text-xs text-gray-700">{{ item }}x</div>
                 </div>
               </div>
               <div class="flex items-center space-x-2">
@@ -82,7 +75,7 @@
             </div>
           </div>
           <div class="mb-6">
-            <div class="text-xs font-semibold mb-2">PAYMENT TYPE</div>
+            <div class="text-xs font-semibold mb-2 text-gray-800">PAYMENT TYPE</div>
             <div class="flex space-x-3 mb-2">
               <button class="bg-gray-200 p-2 rounded"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M2 9h20"/></svg></button>
               <button class="bg-gray-200 p-2 rounded"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M2 9h20"/></svg></button>
@@ -91,15 +84,22 @@
             </div>
           </div>
           <div class="bg-gray-100 rounded p-4 mb-4 text-sm">
-            <div class="flex justify-between mb-1"><span>Total amount receive</span><span class="font-bold">₱527.92</span></div>
-            <div class="flex justify-between mb-1"><span>Subtotal</span><span>₱0.00</span></div>
-            <div class="flex justify-between mb-1"><span>Discount tax</span><span>₱0.00</span></div>
-            <div class="flex justify-between mb-1"><span>Change</span><span>₱0.00</span></div>
-            <div class="flex justify-between mt-2 text-lg font-bold"><span>TOTAL</span><span>₱578.18</span></div>
+            <div class="flex justify-between mb-1 text-gray-800"><span>Total amount receive</span><span class="font-bold">₱527.92</span></div>
+            <div class="flex justify-between mb-1 text-gray-800"><span>Subtotal</span><span>₱0.00</span></div>
+            <div class="flex justify-between mb-1 text-gray-800"><span>Discount tax</span><span>₱0.00</span></div>
+            <div class="flex justify-between mb-1 text-gray-800"><span>Change</span><span>₱0.00</span></div>
+            <div class="flex justify-between mt-2 text-lg font-bold text-gray-800"><span>TOTAL</span><span>₱578.18</span></div>
           </div>
-          <div class="flex space-x-2 mt-auto">
-            <button class="btn btn-outline">Clear Cart</button>
-            <button class="btn btn-primary">Checkout</button>
+          <div class="flex flex-col gap-2 mt-auto">
+            <div class="flex space-x-2 mb-2">
+              <button class="btn">Dine in</button>
+              <button class="btn">Take out</button>
+              <button class="btn">Discount</button>
+            </div>
+            <div class="flex space-x-2">
+              <button class="btn btn-outline text-red-600 border-red-600 font-bold bg-white hover:bg-red-50">Clear Cart</button>
+              <button class="btn btn-primary">Checkout</button>
+            </div>
           </div>
         </div>
       </div>
@@ -108,8 +108,29 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+
 const router = useRouter();
+const inventory = ref([]);
+const loading = ref(false);
+const error = ref('');
+
+async function fetchInventory() {
+  loading.value = true;
+  error.value = '';
+  try {
+    const res = await fetch('http://localhost:5000/api/inventory');
+    if (!res.ok) throw new Error('Failed to fetch inventory');
+    inventory.value = await res.json();
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    loading.value = false;
+  }
+}
+onMounted(fetchInventory);
+
 function handleLogout() {
   localStorage.removeItem('user');
   router.push('/login');

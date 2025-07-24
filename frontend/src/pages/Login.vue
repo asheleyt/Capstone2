@@ -4,7 +4,7 @@
       <div class="bg-base-100 rounded-lg shadow-lg w-full max-w-5xl flex min-h-[500px]">
         <!-- Left: Brand Name Instead of Image -->
         <div class="flex-1 bg-gray-200 flex items-center justify-left">
-          <h1 class="text-1xl md:text-1xl lg:text-4xl font-bold text-gray-700 text-center px-4">
+          <h1 class="text-1xl md:text-1xl lg:text-4xl font-bold text-gray-800 text-center px-4">
             Kraezeus Grill and Restaurant
           </h1>
         </div>

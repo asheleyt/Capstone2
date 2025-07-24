@@ -14,7 +14,7 @@
           <a @click.prevent="goToInventoryOrders" class="text-gray-700 hover:underline cursor-pointer">Inventory Management/Order History</a>
           <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Excel</a>
           <a @click.prevent="goToManageUsers" class="text-gray-700 hover:underline cursor-pointer">Manage users</a>
-          <button @click="handleLogout" class="btn btn-error px-4 py-2 font-bold">Logout</button>
+          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #ef4444 !important;">Logout</button>
         </div>
       </nav>
 
@@ -33,7 +33,7 @@
           <!-- Sales Overview -->
           <div class="bg-white rounded-lg shadow p-6 border">
             <div class="flex items-center justify-between mb-2">
-              <h2 class="text-2xl font-bold text-left">Sales Overview</h2>
+              <h2 class="text-2xl font-bold text-left text-gray-800">Sales Overview</h2>
               <div class="space-x-2">
                 <button v-for="type in ['Daily', 'Weekly', 'Monthly']" :key="type" @click="selectedType = type" :class="[selectedType === type ? 'btn btn-primary' : 'btn btn-outline', 'px-3 py-1 rounded border']">{{ type }}</button>
               </div>
@@ -44,12 +44,12 @@
           </div>
           <!-- Top Selling Items -->
           <div class="bg-white rounded-lg shadow p-6 border">
-            <h2 class="text-xl font-bold mb-2 text-left">Top Selling items</h2>
+            <h2 class="text-xl font-bold mb-2 text-left text-gray-800">Top Selling items</h2>
             <table class="w-full text-left border-t border-b">
               <tbody>
                 <tr v-for="item in topSelling" :key="item.name" class="border-b last:border-b-0">
-                  <td class="py-1 font-semibold">{{ item.name }}</td>
-                  <td class="py-1 text-right font-semibold">{{ item.sold }} sold</td>
+                  <td class="py-1 font-semibold text-gray-800">{{ item.name }}</td>
+                  <td class="py-1 text-right font-semibold text-gray-800">{{ item.sold }} sold</td>
                 </tr>
               </tbody>
             </table>
@@ -59,35 +59,35 @@
         <div class="flex flex-col gap-6">
           <!-- Today's Sale Summary -->
           <div class="bg-white rounded-lg shadow p-6 border">
-            <h2 class="text-2xl font-bold mb-2 text-left">Today's Sale Summary</h2>
+            <h2 class="text-2xl font-bold mb-2 text-left text-gray-800">Today's Sale Summary</h2>
             <table class="w-full text-sm mb-2 border-t border-b">
               <thead>
                 <tr class="border-b">
-                  <th class="font-bold text-left">Item</th>
-                  <th class="font-bold text-left">Qty</th>
-                  <th class="font-bold text-left">Price</th>
-                  <th class="font-bold text-left">Total</th>
+                  <th class="font-bold text-left text-gray-800">Item</th>
+                  <th class="font-bold text-left text-gray-800">Qty</th>
+                  <th class="font-bold text-left text-gray-800">Price</th>
+                  <th class="font-bold text-left text-gray-800">Total</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="row in saleSummary" :key="row.item" class="border-b last:border-b-0">
-                  <td>{{ row.item }}</td>
-                  <td>{{ row.qty }}</td>
-                  <td>₱{{ row.price }}</td>
-                  <td>₱{{ row.total }}</td>
+                  <td class="text-gray-800">{{ row.item }}</td>
+                  <td class="text-gray-800">{{ row.qty }}</td>
+                  <td class="text-gray-800">₱{{ row.price }}</td>
+                  <td class="text-gray-800">₱{{ row.total }}</td>
                 </tr>
               </tbody>
             </table>
             <div class="flex justify-between text-xs mt-2 gap-2">
-              <div class="bg-gray-100 rounded p-2 flex-1 border">Cash sale<br><span class="font-semibold">₱1075.00</span></div>
-              <div class="bg-gray-100 rounded p-2 flex-1 border">Cashless sale<br><span class="font-semibold">₱610.00</span></div>
-              <div class="bg-gray-100 rounded p-2 flex-1 border">Total Discount<br><span class="font-semibold">₱30.00</span></div>
-              <div class="bg-gray-100 rounded p-2 flex-1 border">Total Sale<br><span class="font-semibold">₱1715.00</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cash sale<br><span class="font-semibold">₱1075.00</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cashless sale<br><span class="font-semibold">₱610.00</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Discount<br><span class="font-semibold">₱30.00</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Sale<br><span class="font-semibold">₱1715.00</span></div>
             </div>
           </div>
           <!-- Inventory Alerts -->
           <div class="bg-white rounded-lg shadow p-6 border">
-            <h2 class="text-xl font-bold mb-2 text-left">Inventory alerts</h2>
+            <h2 class="text-xl font-bold mb-2 text-left text-gray-800">Inventory alerts</h2>
             <div v-if="inventoryLoading" class="text-gray-500">Loading inventory alerts...</div>
             <div v-else-if="inventoryError" class="text-red-500">{{ inventoryError }}</div>
             <div v-else>
@@ -326,4 +326,48 @@ async function downloadSalesReport() {
     }
   }
 }
-</script> 
+</script>
+
+<style scoped>
+/* Make the Admin label more visible */
+nav .font-bold {
+  color: #1a202c !important; /* dark gray */
+  font-weight: 900 !important;
+  letter-spacing: 1px;
+}
+
+/* Make Weekly/Monthly buttons more visible when not selected */
+.btn.btn-outline {
+  color: #374151 !important; /* dark gray */
+  border-color: #a0aec0 !important;
+  background: #f3f4f6 !important;
+  opacity: 1 !important;
+}
+.btn.btn-outline:hover {
+  background: #e5e7eb !important;
+  color: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+}
+
+/* Inventory alerts section improvements */
+.bg-white .text-gray-400,
+.bg-white .text-gray-500 {
+  color: #374151 !important; /* dark gray for better visibility */
+  opacity: 0.85;
+}
+.bg-white .text-xs {
+  font-size: 0.95rem !important;
+}
+.bg-white h3 {
+  color: #1a202c !important;
+  font-weight: 700;
+}
+.bg-white .text-red-600 {
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+.bg-white .text-yellow-600 {
+  color: #d97706 !important;
+  font-weight: 700;
+}
+</style> 

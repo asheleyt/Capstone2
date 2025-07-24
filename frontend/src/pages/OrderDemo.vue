@@ -1,12 +1,12 @@
 <template>
   <div class="min-h-screen bg-gray-50 p-6">
     <div class="max-w-4xl mx-auto">
-      <h1 class="text-3xl font-bold mb-6">Order Demo - Test Synchronization</h1>
+      <h1 class="text-3xl font-bold mb-6 text-gray-800">Order Demo - Test Synchronization</h1>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Add New Order -->
         <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-xl font-semibold mb-4">Add New Order</h2>
+          <h2 class="text-xl font-semibold mb-4 text-gray-800">Add New Order</h2>
           <form @submit.prevent="handleAddNewOrder" class="space-y-4">
             <div>
               <label class="block text-sm font-medium mb-1">Table</label>
@@ -47,7 +47,7 @@
 
         <!-- Quick Actions -->
         <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+          <h2 class="text-xl font-semibold mb-4 text-gray-800">Quick Actions</h2>
           <div class="space-y-3">
             <button @click="simulateRandomOrder" class="btn btn-primary w-full">
               Simulate Random Order
@@ -76,12 +76,12 @@
 
       <!-- Current Orders -->
       <div class="mt-8 bg-white rounded-lg shadow p-6">
-        <h2 class="text-xl font-semibold mb-4">Current Orders (POS View)</h2>
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">Current Orders (POS View)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div v-for="order in currentOrders" :key="order.id" 
                :class="['border rounded-lg p-4', getOrderStatusClass(order.status)]">
             <div class="flex items-center justify-between mb-2">
-              <h3 class="font-bold">Order #{{ order.number }}</h3>
+              <h3 class="font-bold text-gray-800">Order #{{ order.number }}</h3>
               <span :class="['px-2 py-1 rounded text-xs font-semibold', getStatusBadgeClass(order.status)]">
                 {{ order.status }}
               </span>
