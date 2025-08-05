@@ -38,6 +38,14 @@
               <div class="text-center mt-2">
                 <span class="text-xs">Forgot your password? <a href="#" class="link link-primary">Reset Password</a></span>
               </div>
+              <!-- Temporary account for testing -->
+              <div class="text-center mt-4 p-3 bg-base-200 rounded-lg">
+                <p class="text-xs font-semibold mb-2">Temporary Admin Account:</p>
+                <div class="text-xs">
+                  <div><strong>Admin:</strong> admin / admin123</div>
+                  <p class="text-xs mt-1 text-gray-600">Use this to access admin dashboard and create other accounts</p>
+                </div>
+              </div>
             </form>
           </div>
         </div>

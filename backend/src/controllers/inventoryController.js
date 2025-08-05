@@ -7,6 +7,7 @@ const {
   addBatch,
   getBatchesByItemId,
   discardBatch,
+  getProductsForPOS,
 } = require('../models/inventory');
 
 // Get all inventory items with their batches
@@ -103,6 +104,16 @@ async function searchInventory(req, res) {
   }
 }
 
+// Get products for POS
+async function getProductsForPOSHandler(req, res) {
+  try {
+    const products = await getProductsForPOS();
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch products for POS', details: err.message });
+  }
+}
+
 module.exports = {
   getInventory,
   addInventoryItem,
@@ -111,4 +122,5 @@ module.exports = {
   addBatchHandler,
   discardBatchHandler,
   searchInventory,
+  getProductsForPOSHandler,
 }; 

@@ -83,6 +83,12 @@
             <input v-model.number="productForm.lowStockThreshold" type="number" min="1" class="input input-bordered w-full" required />
           </div>
           <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Price (₱)
+              <span class="block text-xs text-gray-500">Price that will appear in the POS system.</span>
+            </label>
+            <input v-model.number="productForm.price" type="number" min="0" step="0.01" class="input input-bordered w-full" required />
+          </div>
+          <div class="mb-3">
             <label class="block text-sm font-semibold mb-1">Raw Materials</label>
             <div v-for="(rm, idx) in productForm.rawMaterials" :key="idx" class="flex gap-2 mb-2">
               <select v-model="rm.name" class="select select-bordered flex-1">
@@ -166,7 +172,7 @@
               <button class="btn btn-link btn-xs" @click="openEditModal(item)">Edit</button>
               <button class="btn btn-link btn-xs btn-error" @click="discardItem(item.id)">Discard</button>
             </div>
-            <div class="text-xs text-gray-700 mb-2">Type: {{ item.type === 'raw' ? 'Raw Material' : 'Product' }}</div>
+            <div class="text-xs text-gray-700 mb-2">Type: {{ item.type === 'raw' ? 'Raw Material' : (item.type === 'Product' ? 'Product' : 'Product') }}</div>
             <div class="flex-1">
               <div v-for="batch in item.batches" :key="batch.id" class="mb-2 p-2 rounded border bg-white">
                 <div class="flex justify-between items-center">
@@ -181,7 +187,7 @@
                 <div>Expiry: <span>{{ batch.expiry }}</span></div>
               </div>
             </div>
-            <div v-if="item.type === 'product' && item.requires_raw_materials" class="mt-2 text-xs text-gray-600">
+            <div v-if="(item.type === 'product' || item.type === 'Product') && item.requires_raw_materials" class="mt-2 text-xs text-gray-600">
               <div>Raw Materials:</div>
               <ul class="list-disc ml-4">
                 <li v-for="rm in item.raw_materials" :key="rm.name">{{ rm.quantity }}x {{ rm.name }}</li>
@@ -236,6 +242,7 @@ const productForm = ref({
   quantity: 1,
   expiry: '',
   lowStockThreshold: 1,
+  price: 0,
   rawMaterials: [], // [{ name, quantity }]
 });
 
@@ -350,13 +357,14 @@ async function submitProduct() {
     const res = await fetch('http://localhost:5000/api/inventory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: productForm.value.name,
-        type: 'product',
-        lowStockThreshold: productForm.value.lowStockThreshold,
-        requiresRawMaterials: true,
-        rawMaterials: productForm.value.rawMaterials,
-      }),
+              body: JSON.stringify({
+          name: productForm.value.name,
+          type: 'Product',
+          lowStockThreshold: productForm.value.lowStockThreshold,
+          requiresRawMaterials: true,
+          rawMaterials: productForm.value.rawMaterials,
+          price: productForm.value.price,
+        }),
     });
     if (!res.ok) throw new Error('Failed to add product');
     const item = await res.json();

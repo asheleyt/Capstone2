@@ -7,6 +7,7 @@ const {
   addBatchHandler,
   discardBatchHandler,
   searchInventory,
+  getProductsForPOSHandler,
 } = require('../controllers/inventoryController');
 
 const router = express.Router();
@@ -25,5 +26,7 @@ router.post('/batch', addBatchHandler);
 router.delete('/batch/:batchId', discardBatchHandler);
 // Search inventory
 router.get('/search', searchInventory);
+// Get products for POS
+router.get('/pos', getProductsForPOSHandler);
 
 module.exports = router; 

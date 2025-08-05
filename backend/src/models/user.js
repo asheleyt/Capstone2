@@ -1,4 +1,5 @@
 const pool = require('../db');
+const bcrypt = require('bcrypt');
 
 // Create users table if it doesn't exist
 async function initUserTable() {
@@ -13,6 +14,34 @@ async function initUserTable() {
       salary NUMERIC(12,2)
     );
   `);
+  
+  // Create temporary default accounts
+  await createDefaultAccounts();
+}
+
+// Create temporary default accounts for testing
+async function createDefaultAccounts() {
+  try {
+    // Check if default accounts already exist
+    const existingUsers = await getAllUsers();
+    const existingUsernames = existingUsers.map(user => user.username);
+    
+    // Only create admin account if it doesn't exist
+    if (!existingUsernames.includes('admin')) {
+      const adminPassword = await bcrypt.hash('admin123', 10);
+      await createUser({
+        fullName: 'Temporary Admin',
+        username: 'admin',
+        password: adminPassword,
+        role: 'Admin',
+        shift: 'Day',
+        salary: 50000
+      });
+      console.log('Temporary admin account created: admin/admin123');
+    }
+  } catch (error) {
+    console.error('Error creating default accounts:', error);
+  }
 }
 
 // Insert a new user
@@ -64,4 +93,5 @@ module.exports = {
   deleteUser,
   updateUser,
   findUserByUsername,
+  createDefaultAccounts,
 }; 
