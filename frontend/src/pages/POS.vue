@@ -135,6 +135,52 @@
             </div>
           </div>
 
+          <!-- Order Notes -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-semibold text-gray-800">ORDER NOTES</div>
+              <div v-if="orderNotes.trim()" class="flex items-center space-x-1">
+                <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span class="text-xs text-blue-600 font-medium">Has notes</span>
+              </div>
+            </div>
+            <textarea 
+              v-model="orderNotes" 
+              placeholder="Add special instructions, allergies, or cooking preferences..."
+              class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows="3"
+              maxlength="200"
+            ></textarea>
+            <div class="flex justify-between items-center mt-1">
+              <span class="text-xs text-gray-500">Special instructions for kitchen staff</span>
+              <div class="flex items-center space-x-2">
+                <button 
+                  v-if="orderNotes.trim()" 
+                  @click="orderNotes = ''" 
+                  class="text-xs text-red-500 hover:text-red-700 underline"
+                >
+                  Clear notes
+                </button>
+                <span class="text-xs text-gray-400">{{ orderNotes.length }}/200</span>
+              </div>
+            </div>
+            
+            <!-- Quick Notes Templates -->
+            <div class="mt-2">
+              <div class="text-xs text-gray-600 mb-1">Quick notes:</div>
+              <div class="flex flex-wrap gap-1">
+                <button 
+                  v-for="template in noteTemplates" 
+                  :key="template"
+                  @click="addNoteTemplate(template)"
+                  class="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded border"
+                >
+                  {{ template }}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Payment Type -->
           <div class="mb-6">
             <div class="text-xs font-semibold mb-2 text-gray-800">PAYMENT TYPE</div>
@@ -212,12 +258,30 @@ const currentFilter = ref('all');
 const selectedPaymentMethod = ref('Cash');
 const orderType = ref('dine-in');
 const totalAmountReceived = ref(0);
+const orderNotes = ref('');
 
 // Payment methods
 const paymentMethods = ['Cash', 'maya', 'GCash', 'Card'];
 
 // Product categories (you can modify this based on your needs)
 const productCategories = ['Food', 'Beverage', 'Dessert'];
+
+// Note templates for quick access
+const noteTemplates = [
+  'No onions',
+  'Extra spicy',
+  'Mild spice',
+  'No rice',
+  'Extra rice',
+  'To go',
+  'For here',
+  'Allergy: nuts',
+  'Allergy: seafood',
+  'Well done',
+  'Medium rare',
+  'Extra sauce',
+  'No sauce'
+];
 
 async function fetchProducts() {
   loading.value = true;
@@ -308,19 +372,63 @@ function updateQuantity(itemId, change) {
 function clearCart() {
   cart.value = [];
   totalAmountReceived.value = 0;
+  orderNotes.value = '';
 }
 
 function setOrderType(type) {
   orderType.value = type;
 }
 
-function checkout() {
+function addNoteTemplate(template) {
+  if (orderNotes.value.trim()) {
+    // If there are already notes, add the template with a separator
+    orderNotes.value += `, ${template}`;
+  } else {
+    // If no notes yet, just add the template
+    orderNotes.value = template;
+  }
+}
+
+async function checkout() {
   if (cart.value.length === 0) return;
   
-  // Here you would implement the actual checkout logic
-  // For now, just show an alert
-  alert('Order placed successfully!');
-  clearCart();
+  // Create order object with notes
+  const order = {
+    items: cart.value,
+    paymentMethod: selectedPaymentMethod.value,
+    orderType: orderType.value,
+    notes: orderNotes.value.trim(),
+    subtotal: subtotal.value,
+    total: total.value,
+    amountReceived: totalAmountReceived.value,
+    changeAmount: change.value
+  };
+  
+  try {
+    const response = await fetch('http://localhost:5000/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(order)
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to create order');
+    }
+    
+    const result = await response.json();
+    console.log('Order created:', result);
+    
+    // Show success message with order number and notes
+    const notesText = order.notes ? `\n\nNotes: ${order.notes}` : '';
+    alert(`Order #${result.order_number} placed successfully!${notesText}`);
+    clearCart();
+    
+  } catch (error) {
+    console.error('Error creating order:', error);
+    alert('Failed to place order. Please try again.');
+  }
 }
 
 // Computed properties

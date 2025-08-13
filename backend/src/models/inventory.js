@@ -16,6 +16,15 @@ async function initInventoryTables() {
       );
     `);
 
+    // Add price column if it doesn't exist (migration)
+    try {
+      await pool.query('ALTER TABLE inventory_items ADD COLUMN price DECIMAL(10,2) DEFAULT 0.00');
+      console.log('Price column added to inventory_items table');
+    } catch (error) {
+      // Column already exists, ignore error
+      console.log('Price column already exists in inventory_items table');
+    }
+
     // Create inventory_batches table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS inventory_batches (
