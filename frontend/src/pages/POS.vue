@@ -4,7 +4,7 @@
     <aside class="w-56 bg-gray-200 flex flex-col justify-between py-6 px-4">
       <div>
         <nav>
-          <button class="flex items-center space-x-2 mb-4 text-black hover:underline">
+          <button class="flex items-center space-x-2 mb-4 text-black hover:underline" @click="goToOrderHistory">
             <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
             <span>Order History</span>
           </button>
@@ -110,7 +110,7 @@
         <div class="col-span-4 bg-white rounded-lg shadow p-6 flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-2xl font-bold text-gray-800">Current Order</h2>
-            <button class="btn">Add-On</button>
+            <button @click="setOrderType('take-out')" :class="['btn', orderType === 'take-out' ? 'btn-primary' : '']">Take out</button>
           </div>
           
           <!-- Cart Items -->
@@ -135,9 +135,9 @@
             </div>
           </div>
 
-          <!-- Order Notes -->
-          <div class="mb-6">
-            <div class="flex items-center justify-between mb-2">
+          <!-- Order Notes & Table Number -->
+          <div class="mb-4 flex flex-col gap-2">
+            <div class="flex items-center justify-between mb-1">
               <div class="text-xs font-semibold text-gray-800">ORDER NOTES</div>
               <div v-if="orderNotes.trim()" class="flex items-center space-x-1">
                 <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -147,8 +147,8 @@
             <textarea 
               v-model="orderNotes" 
               placeholder="Add special instructions, allergies, or cooking preferences..."
-              class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows="3"
+              class="w-full p-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
+              rows="2"
               maxlength="200"
             ></textarea>
             <div class="flex justify-between items-center mt-1">
@@ -164,20 +164,10 @@
                 <span class="text-xs text-gray-400">{{ orderNotes.length }}/200</span>
               </div>
             </div>
-            
-            <!-- Quick Notes Templates -->
-            <div class="mt-2">
-              <div class="text-xs text-gray-600 mb-1">Quick notes:</div>
-              <div class="flex flex-wrap gap-1">
-                <button 
-                  v-for="template in noteTemplates" 
-                  :key="template"
-                  @click="addNoteTemplate(template)"
-                  class="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded border"
-                >
-                  {{ template }}
-                </button>
-              </div>
+            <!-- Table Number Input (only for dine-in) -->
+            <div v-if="orderType === 'dine-in'" class="flex items-center gap-2 mt-2">
+              <label class="text-xs font-semibold text-gray-800" for="tableNumber">Table #</label>
+              <input id="tableNumber" v-model="tableNumber" type="text" placeholder="Enter table number" class="input input-bordered input-sm w-24 text-xs" />
             </div>
           </div>
 
@@ -259,6 +249,7 @@ const selectedPaymentMethod = ref('Cash');
 const orderType = ref('dine-in');
 const totalAmountReceived = ref(0);
 const orderNotes = ref('');
+const tableNumber = ref('');
 
 // Payment methods
 const paymentMethods = ['Cash', 'maya', 'GCash', 'Card'];
@@ -373,10 +364,12 @@ function clearCart() {
   cart.value = [];
   totalAmountReceived.value = 0;
   orderNotes.value = '';
+  tableNumber.value = '';
 }
 
 function setOrderType(type) {
   orderType.value = type;
+  if (type === 'take-out') tableNumber.value = '';
 }
 
 function addNoteTemplate(template) {
@@ -391,19 +384,22 @@ function addNoteTemplate(template) {
 
 async function checkout() {
   if (cart.value.length === 0) return;
-  
-  // Create order object with notes
+  if (orderType.value === 'dine-in' && !tableNumber.value.trim()) {
+    alert('Please enter a table number for dine-in orders.');
+    return;
+  }
+  // Create order object with notes and table number
   const order = {
     items: cart.value,
     paymentMethod: selectedPaymentMethod.value,
     orderType: orderType.value,
+    tableNumber: orderType.value === 'dine-in' ? tableNumber.value.trim() : '',
     notes: orderNotes.value.trim(),
     subtotal: subtotal.value,
     total: total.value,
     amountReceived: totalAmountReceived.value,
     changeAmount: change.value
   };
-  
   try {
     const response = await fetch('http://localhost:5000/api/orders', {
       method: 'POST',
@@ -412,19 +408,17 @@ async function checkout() {
       },
       body: JSON.stringify(order)
     });
-    
     if (!response.ok) {
       throw new Error('Failed to create order');
     }
-    
     const result = await response.json();
     console.log('Order created:', result);
-    
-    // Show success message with order number and notes
-    const notesText = order.notes ? `\n\nNotes: ${order.notes}` : '';
-    alert(`Order #${result.order_number} placed successfully!${notesText}`);
+    // Show success message with order number, table, and notes
+    const tableText = order.tableNumber ? `\nTable: ${order.tableNumber}` : '';
+    const notesText = order.notes ? `\nNotes: ${order.notes}` : '';
+    alert(`Order #${result.order_number} placed successfully!${tableText}${notesText}`);
     clearCart();
-    
+    tableNumber.value = '';
   } catch (error) {
     console.error('Error creating order:', error);
     alert('Failed to place order. Please try again.');
@@ -451,6 +445,10 @@ const change = computed(() => {
 function handleLogout() {
   localStorage.removeItem('user');
   router.push('/login');
+}
+
+function goToOrderHistory() {
+  router.push('/cashier/order-history');
 }
 
 onMounted(fetchProducts);

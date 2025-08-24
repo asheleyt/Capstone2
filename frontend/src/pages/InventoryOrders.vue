@@ -500,14 +500,20 @@ async function downloadSalesReport() {
 }
 
 // Use shared order data instead of local mock data
-const orders = computed(() => {
-  return completedOrders.value.map(order => ({
+const orders = ref([]);
+
+async function fetchOrders() {
+  const res = await fetch('http://localhost:5000/api/orders');
+  const data = await res.json();
+  orders.value = data.map(order => ({
     id: order.id,
-    number: order.number,
-    date: order.date,
+    number: order.order_number,
+    date: order.created_at ? order.created_at.split('T')[0] : '',
     amount: order.total
   }));
-});
+}
+
+onMounted(fetchOrders);
 </script> 
 
 <style scoped>

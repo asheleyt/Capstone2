@@ -6,6 +6,7 @@ import POS from '../pages/POS.vue';
 import KitchenOrderHistory from '../pages/KitchenOrderHistory.vue';
 import OrderDemo from '../pages/OrderDemo.vue';
 import KDS from '../pages/KDS.vue';
+import OrderHistory from '../pages/OrderHistory.vue';
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -18,6 +19,7 @@ const routes = [
   { path: '/kitchen/order-history', component: KitchenOrderHistory },
   { path: '/demo', component: OrderDemo },
   { path: '/kds', component: KDS },
+  { path: '/cashier/order-history', component: OrderHistory },
 ];
 
 export default routes; 

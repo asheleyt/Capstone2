@@ -21,6 +21,11 @@ async function createOrderHandler(req, res) {
     }
     
     const order = await createOrder(orderData);
+    // Emit new order to KDS via socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('newOrder', order);
+    }
     res.status(201).json(order);
   } catch (err) {
     console.error('Error creating order:', err);

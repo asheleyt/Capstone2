@@ -14,6 +14,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- SOCKET.IO SETUP ---
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+app.set('io', io); // Make io accessible in routes/controllers
+
 app.use('/api/users', userRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/inventory', inventoryRoutes);
@@ -32,7 +44,7 @@ initUserTable().then(() => {
   return initializeSampleProducts();
 }).then(() => {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }).catch((err) => {
