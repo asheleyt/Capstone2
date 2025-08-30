@@ -140,7 +140,7 @@ async function fetchInventory() {
   inventoryLoading.value = true;
   inventoryError.value = '';
   try {
-    const res = await fetch('http://localhost:5000/api/inventory');
+    const res = await fetch('http://localhost:3000/api/inventory');
     if (!res.ok) throw new Error('Failed to fetch inventory');
     inventory.value = await res.json();
   } catch (e) {
@@ -282,7 +282,7 @@ async function downloadSalesReport() {
     }
 
     // Make API call to download Excel file
-    const response = await fetch('http://localhost:5000/api/sales/report?reportType=detailed', {
+    const response = await fetch('http://localhost:3000/api/sales/report?reportType=detailed', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

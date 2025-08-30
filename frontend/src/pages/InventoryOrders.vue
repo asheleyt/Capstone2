@@ -251,7 +251,7 @@ async function fetchInventory() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await fetch('http://localhost:5000/api/inventory');
+    const res = await fetch('http://localhost:3000/api/inventory');
     if (!res.ok) throw new Error('Failed to fetch inventory');
     inventory.value = await res.json();
   } catch (e) {
@@ -300,7 +300,7 @@ async function submitRawMaterial() {
     if (!rawForm.value.expiry) throw new Error('Expiry date is required');
     if (rawForm.value.quantity < 1) throw new Error('Quantity must be at least 1');
     // 1. Create item
-    const res = await fetch('http://localhost:5000/api/inventory', {
+    const res = await fetch('http://localhost:3000/api/inventory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -314,7 +314,7 @@ async function submitRawMaterial() {
     if (!res.ok) throw new Error('Failed to add raw material');
     const item = await res.json();
     // 2. Add batch
-    const batchRes = await fetch('http://localhost:5000/api/inventory/batch', {
+    const batchRes = await fetch('http://localhost:3000/api/inventory/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -354,7 +354,7 @@ async function submitProduct() {
     if (productForm.value.quantity < 1) throw new Error('Quantity must be at least 1');
     if (productForm.value.rawMaterials.some(rm => !rm.name || rm.quantity < 1)) throw new Error('All raw materials must have a name and quantity');
     // 1. Create item
-    const res = await fetch('http://localhost:5000/api/inventory', {
+    const res = await fetch('http://localhost:3000/api/inventory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -369,7 +369,7 @@ async function submitProduct() {
     if (!res.ok) throw new Error('Failed to add product');
     const item = await res.json();
     // 2. Add batch
-    const batchRes = await fetch('http://localhost:5000/api/inventory/batch', {
+    const batchRes = await fetch('http://localhost:3000/api/inventory/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -401,7 +401,7 @@ async function submitEditBatch() {
   try {
     if (!editBatchForm.value.expiry) throw new Error('Expiry date is required');
     if (editBatchForm.value.quantity < 1) throw new Error('Quantity must be at least 1');
-    await fetch('http://localhost:5000/api/inventory/batch', {
+    await fetch('http://localhost:3000/api/inventory/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -423,13 +423,13 @@ async function submitEditBatch() {
 async function discardBatch(itemId, batchId) {
   // Always confirm before discarding
   if (confirm('Are you sure you want to discard this batch?')) {
-    await fetch(`http://localhost:5000/api/inventory/batch/${batchId}`, { method: 'DELETE' });
+    await fetch(`http://localhost:3000/api/inventory/batch/${batchId}`, { method: 'DELETE' });
     await fetchInventory();
   }
 }
 async function discardItem(itemId) {
   if (confirm('Are you sure you want to discard this entire item and all its batches?')) {
-    await fetch(`http://localhost:5000/api/inventory/${itemId}`, { method: 'DELETE' });
+    await fetch(`http://localhost:3000/api/inventory/${itemId}`, { method: 'DELETE' });
     await fetchInventory();
   }
 }
@@ -454,7 +454,7 @@ async function downloadSalesReport() {
     }
 
     // Make API call to download Excel file
-    const response = await fetch('http://localhost:5000/api/sales/report?reportType=detailed', {
+    const response = await fetch('http://localhost:3000/api/sales/report?reportType=detailed', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

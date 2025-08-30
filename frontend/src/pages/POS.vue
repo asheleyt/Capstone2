@@ -223,7 +223,7 @@ async function fetchProducts() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await fetch('http://localhost:5000/api/inventory/pos');
+    const res = await fetch('http://localhost:3000/api/inventory/pos');
     if (!res.ok) throw new Error('Failed to fetch products');
     const data = await res.json();
     console.log('Fetched products:', data); // Debug log

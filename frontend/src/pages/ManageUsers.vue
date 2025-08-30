@@ -218,7 +218,7 @@ async function fetchUsers() {
   isLoadingUsers.value = true;
   usersError.value = '';
   try {
-    const response = await fetch('http://localhost:5000/api/users');
+    const response = await fetch('http://localhost:3000/api/users');
     if (!response.ok) throw new Error('Failed to fetch users');
     users.value = await response.json();
   } catch (err) {
@@ -252,7 +252,7 @@ async function downloadSalesReport() {
     }
 
     // Make API call to download Excel file
-    const response = await fetch('http://localhost:5000/api/sales/report?reportType=detailed', {
+    const response = await fetch('http://localhost:3000/api/sales/report?reportType=detailed', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -302,7 +302,7 @@ async function submitAddUser() {
   formMessage.value = '';
   formError.value = '';
   try {
-    const response = await fetch('http://localhost:5000/api/users', {
+    const response = await fetch('http://localhost:3000/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newUser.value)
@@ -342,7 +342,7 @@ async function submitEditUser() {
   editFormMessage.value = '';
   editFormError.value = '';
   try {
-    const response = await fetch(`http://localhost:5000/api/users/${editUser.value.id}`, {
+    const response = await fetch(`http://localhost:3000/api/users/${editUser.value.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -371,7 +371,7 @@ async function submitEditUser() {
 async function deleteUser(id) {
   if (!confirm('Are you sure you want to delete this user?')) return;
   try {
-    const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+    const response = await fetch(`http://localhost:3000/api/users/${id}`, {
       method: 'DELETE'
     });
     if (response.ok) {
