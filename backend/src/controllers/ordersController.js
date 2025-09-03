@@ -5,6 +5,7 @@ const {
   updateOrderStatus,
   getOrdersByStatus,
 } = require('../models/orders');
+const { consumeStockFIFO } = require('../models/inventory');
 
 // Create a new order
 async function createOrderHandler(req, res) {
@@ -21,6 +22,19 @@ async function createOrderHandler(req, res) {
     }
     
     const order = await createOrder(orderData);
+
+    // Decrement inventory stock per item (FIFO across batches)
+    try {
+      await Promise.all(
+        orderData.items.map(item =>
+          item.id ? consumeStockFIFO(item.id, item.quantity) : Promise.resolve()
+        )
+      );
+    } catch (stockErr) {
+      console.error('Stock decrement failed:', stockErr);
+      // We do not fail the order creation for display purposes, but log the error
+    }
+
     // Emit new order to KDS via socket.io
     const io = req.app.get('io');
     if (io) {

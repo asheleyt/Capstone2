@@ -4,9 +4,12 @@
     <aside class="w-56 bg-gray-200 flex flex-col justify-between py-6 px-4">
       <div>
         <nav>
-          <button class="flex items-center space-x-2 mb-4 text-black hover:underline" @click="goToOrderHistory">
+          <button 
+            class="flex items-center space-x-2 mb-4 text-black hover:underline" 
+            @click="toggleOrderHistory"
+          >
             <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
-            <span>Order History</span>
+            <span>{{ showOrderHistory ? 'Hide' : 'Show' }} Order History</span>
           </button>
         </nav>
       </div>
@@ -230,6 +233,97 @@
         </div>
       </div>
     </div>
+
+    <!-- Collapsible Order History Panel -->
+    <div 
+      v-if="showOrderHistory" 
+      class="fixed left-0 top-0 h-full w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-50"
+      :class="showOrderHistory ? 'translate-x-0' : '-translate-x-full'"
+    >
+      <div class="flex items-center justify-between p-4 border-b">
+        <h3 class="text-lg font-semibold text-gray-800">Order History</h3>
+        <button @click="toggleOrderHistory" class="text-gray-500 hover:text-gray-700">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="p-4 overflow-y-auto h-full">
+        <div v-if="orderHistoryLoading" class="text-center py-8">
+          <div class="loading loading-spinner loading-md"></div>
+          <p class="mt-2 text-gray-600">Loading orders...</p>
+        </div>
+        
+        <div v-else-if="orderHistoryError" class="text-center py-8">
+          <div class="text-red-500 text-xl mb-2">⚠️</div>
+          <p class="text-red-600">{{ orderHistoryError }}</p>
+          <button @click="fetchOrderHistory" class="btn btn-primary mt-4">Retry</button>
+        </div>
+        
+        <div v-else-if="orderHistory.length === 0" class="text-center py-8">
+          <div class="text-gray-400 text-xl mb-2">📋</div>
+          <p class="text-gray-600">No orders yet</p>
+        </div>
+        
+        <div v-else class="space-y-3">
+          <div 
+            v-for="order in orderHistory" 
+            :key="order.id" 
+            class="bg-gray-50 rounded-lg p-3 border-l-4"
+            :class="{
+              'border-blue-500': order.status === 'pending',
+              'border-yellow-500': order.status === 'preparing',
+              'border-green-500': order.status === 'ready',
+              'border-gray-500': order.status === 'completed',
+              'border-red-500': order.status === 'cancelled'
+            }"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-semibold text-gray-800">#{{ order.order_number }}</span>
+              <span 
+                class="px-2 py-1 rounded-full text-xs font-medium"
+                :class="{
+                  'bg-blue-100 text-blue-800': order.status === 'pending',
+                  'bg-yellow-100 text-yellow-800': order.status === 'preparing',
+                  'bg-green-100 text-green-800': order.status === 'ready',
+                  'bg-gray-100 text-gray-800': order.status === 'completed',
+                  'bg-red-100 text-red-800': order.status === 'cancelled'
+                }"
+              >
+                {{ order.status }}
+              </span>
+            </div>
+            
+            <div class="text-sm text-gray-600 mb-2">
+              <div class="flex items-center space-x-2">
+                <span>{{ order.order_type }}</span>
+                <span v-if="order.table_number">• Table {{ order.table_number }}</span>
+                <span>• {{ order.payment_method }}</span>
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                {{ new Date(order.created_at).toLocaleString() }}
+              </div>
+            </div>
+            
+            <div class="space-y-1 mb-2">
+              <div v-for="item in order.items" :key="item.id" class="text-sm">
+                <span class="text-gray-800">{{ item.quantity }}x {{ item.product_name }}</span>
+                <span class="text-gray-600 ml-2">₱{{ item.total_price }}</span>
+              </div>
+            </div>
+            
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-gray-800">₱{{ order.total }}</span>
+            </div>
+            
+            <div v-if="order.notes" class="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
+              <strong>Notes:</strong> {{ order.notes }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -250,6 +344,12 @@ const orderType = ref('dine-in');
 const totalAmountReceived = ref(0);
 const orderNotes = ref('');
 const tableNumber = ref('');
+
+// Order History
+const showOrderHistory = ref(false);
+const orderHistory = ref([]);
+const orderHistoryLoading = ref(false);
+const orderHistoryError = ref('');
 
 // Payment methods
 const paymentMethods = ['Cash', 'maya', 'GCash', 'Card'];
@@ -419,6 +519,11 @@ async function checkout() {
     alert(`Order #${result.order_number} placed successfully!${tableText}${notesText}`);
     clearCart();
     tableNumber.value = '';
+    
+    // Refresh order history if it's open
+    if (showOrderHistory.value) {
+      await fetchOrderHistory();
+    }
   } catch (error) {
     console.error('Error creating order:', error);
     alert('Failed to place order. Please try again.');
@@ -449,6 +554,29 @@ function handleLogout() {
 
 function goToOrderHistory() {
   router.push('/cashier/order-history');
+}
+
+async function fetchOrderHistory() {
+  orderHistoryLoading.value = true;
+  orderHistoryError.value = '';
+  try {
+    const res = await fetch('http://localhost:5000/api/orders');
+    if (!res.ok) throw new Error('Failed to fetch orders');
+    const data = await res.json();
+    orderHistory.value = data;
+  } catch (e) {
+    console.error('Error fetching order history:', e);
+    orderHistoryError.value = e.message;
+  } finally {
+    orderHistoryLoading.value = false;
+  }
+}
+
+function toggleOrderHistory() {
+  showOrderHistory.value = !showOrderHistory.value;
+  if (showOrderHistory.value && orderHistory.value.length === 0) {
+    fetchOrderHistory();
+  }
 }
 
 onMounted(fetchProducts);

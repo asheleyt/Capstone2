@@ -10,6 +10,8 @@ const mockSalesData = [
     table: 'Table 1',
     status: 'Completed',
     total: 450,
+    paymentMethod: 'cash',
+    discount: 0,
     items: [
       { id: 1, name: 'Grilled Chicken', quantity: 2, price: 150 },
       { id: 2, name: 'French Fries', quantity: 1, price: 80 },
@@ -25,6 +27,8 @@ const mockSalesData = [
     table: 'Table 3',
     status: 'Completed',
     total: 320,
+    paymentMethod: 'cashless',
+    discount: 10,
     items: [
       { id: 4, name: 'Beef Steak', quantity: 1, price: 200 },
       { id: 5, name: 'Rice', quantity: 1, price: 30 },
@@ -41,6 +45,8 @@ const mockSalesData = [
     table: 'Table 5',
     status: 'Completed',
     total: 280,
+    paymentMethod: 'cash',
+    discount: 0,
     items: [
       { id: 8, name: 'Fish Fillet', quantity: 1, price: 180 },
       { id: 9, name: 'Vegetables', quantity: 1, price: 60 },
@@ -57,6 +63,8 @@ const mockSalesData = [
     table: 'Table 2',
     status: 'Completed',
     total: 380,
+    paymentMethod: 'cashless',
+    discount: 20,
     items: [
       { id: 12, name: 'Pork Chop', quantity: 1, price: 180 },
       { id: 13, name: 'Mashed Potatoes', quantity: 1, price: 60 },
@@ -74,6 +82,8 @@ const mockSalesData = [
     table: 'Table 4',
     status: 'Completed',
     total: 250,
+    paymentMethod: 'cash',
+    discount: 0,
     items: [
       { id: 17, name: 'Chicken Salad', quantity: 1, price: 120 },
       { id: 18, name: 'Bread Roll', quantity: 2, price: 15 },
@@ -81,8 +91,253 @@ const mockSalesData = [
       { id: 20, name: 'Ice Cream', quantity: 1, price: 60 }
     ],
     completedAt: '2024-01-16T16:30:00'
+  },
+  // Add today's sales data for dashboard functionality
+  {
+    id: 6,
+    number: '006',
+    time: '10:30',
+    date: new Date().toISOString().split('T')[0], // Today's date
+    table: 'Table 1',
+    status: 'Completed',
+    total: 450,
+    paymentMethod: 'cash',
+    discount: 0,
+    items: [
+      { id: 21, name: 'Grilled Chicken', quantity: 2, price: 150 },
+      { id: 22, name: 'French Fries', quantity: 1, price: 80 },
+      { id: 23, name: 'Soft Drink', quantity: 2, price: 35 }
+    ],
+    completedAt: new Date().toISOString()
+  },
+  {
+    id: 7,
+    number: '007',
+    time: '11:15',
+    date: new Date().toISOString().split('T')[0], // Today's date
+    table: 'Table 2',
+    status: 'Completed',
+    total: 320,
+    paymentMethod: 'cashless',
+    discount: 10,
+    items: [
+      { id: 24, name: 'Beef Steak', quantity: 1, price: 200 },
+      { id: 25, name: 'Rice', quantity: 1, price: 30 },
+      { id: 26, name: 'Iced Tea', quantity: 1, price: 45 },
+      { id: 27, name: 'Soup', quantity: 1, price: 45 }
+    ],
+    completedAt: new Date().toISOString()
+  },
+  {
+    id: 8,
+    number: '008',
+    time: '12:45',
+    date: new Date().toISOString().split('T')[0], // Today's date
+    table: 'Table 3',
+    status: 'Completed',
+    total: 280,
+    paymentMethod: 'cash',
+    discount: 0,
+    items: [
+      { id: 28, name: 'Fish Fillet', quantity: 1, price: 180 },
+      { id: 29, name: 'Vegetables', quantity: 1, price: 60 },
+      { id: 30, name: 'Water', quantity: 1, price: 20 },
+      { id: 31, name: 'Dessert', quantity: 1, price: 20 }
+    ],
+    completedAt: new Date().toISOString()
+  },
+  {
+    id: 9,
+    number: '009',
+    time: '14:20',
+    date: new Date().toISOString().split('T')[0], // Today's date
+    table: 'Table 4',
+    status: 'Completed',
+    total: 380,
+    paymentMethod: 'cashless',
+    discount: 20,
+    items: [
+      { id: 32, name: 'Pork Chop', quantity: 1, price: 180 },
+      { id: 33, name: 'Mashed Potatoes', quantity: 1, price: 60 },
+      { id: 34, name: 'Gravy', quantity: 1, price: 20 },
+      { id: 35, name: 'Coffee', quantity: 1, price: 30 },
+      { id: 36, name: 'Cheesecake', quantity: 1, price: 90 }
+    ],
+    completedAt: new Date().toISOString()
+  },
+  {
+    id: 10,
+    number: '010',
+    time: '15:30',
+    date: new Date().toISOString().split('T')[0], // Today's date
+    table: 'Table 5',
+    status: 'Completed',
+    total: 250,
+    paymentMethod: 'cash',
+    discount: 0,
+    items: [
+      { id: 37, name: 'Chicken Salad', quantity: 1, price: 120 },
+      { id: 38, name: 'Bread Roll', quantity: 2, price: 15 },
+      { id: 39, name: 'Orange Juice', quantity: 1, price: 40 },
+      { id: 40, name: 'Ice Cream', quantity: 1, price: 60 }
+    ],
+    completedAt: new Date().toISOString()
+  },
+  // Add some recent sales for the weekly chart
+  {
+    id: 11,
+    number: '011',
+    time: '18:45',
+    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Yesterday
+    table: 'Table 1',
+    status: 'Completed',
+    total: 520,
+    paymentMethod: 'cashless',
+    discount: 15,
+    items: [
+      { id: 41, name: 'Grilled Chicken', quantity: 2, price: 150 },
+      { id: 42, name: 'French Fries', quantity: 2, price: 80 },
+      { id: 43, name: 'Soft Drink', quantity: 3, price: 35 },
+      { id: 44, name: 'Dessert', quantity: 1, price: 20 }
+    ],
+    completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 12,
+    number: '012',
+    time: '19:15',
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days ago
+    table: 'Table 2',
+    status: 'Completed',
+    total: 180,
+    paymentMethod: 'cash',
+    discount: 0,
+    items: [
+      { id: 45, name: 'Beef Steak', quantity: 1, price: 200 },
+      { id: 46, name: 'Rice', quantity: 1, price: 30 },
+      { id: 47, name: 'Iced Tea', quantity: 1, price: 45 }
+    ],
+    completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
   }
 ];
+
+// Helper functions for date analysis
+function getTodayDate() {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+}
+
+function getTomorrowDate() {
+  const today = new Date();
+  today.setDate(today.getDate() + 1);
+  return today.toISOString().split('T')[0];
+}
+
+function getYesterdayDate() {
+  const today = new Date();
+  today.setDate(today.getDate() - 1);
+  return today.toISOString().split('T')[0];
+}
+
+function getDateLabel(dateString) {
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  if (dateString === today.toISOString().split('T')[0]) {
+    return 'Today';
+  } else if (dateString === yesterday.toISOString().split('T')[0]) {
+    return 'Yesterday';
+  } else {
+    return date.toLocaleDateString();
+  }
+}
+
+function isToday(dateString) {
+  return dateString === getTodayDate();
+}
+
+function isTomorrow(dateString) {
+  return dateString === getTomorrowDate();
+}
+
+function isYesterday(dateString) {
+  return dateString === getYesterdayDate();
+}
+
+// Get sales for specific date
+function getSalesForDate(dateString) {
+  return mockSalesData.filter(order => order.date === dateString);
+}
+
+// New API endpoint to demonstrate date determination
+async function getSalesDateAnalysis(req, res) {
+  try {
+    const today = getTodayDate();
+    const tomorrow = getTomorrowDate();
+    const yesterday = getYesterdayDate();
+    
+    // Get sales for different dates
+    const todaySales = getSalesForDate(today);
+    const tomorrowSales = getSalesForDate(tomorrow);
+    const yesterdaySales = getSalesForDate(yesterday);
+    
+    // Calculate totals
+    const todayTotal = todaySales.reduce((sum, order) => sum + order.total, 0);
+    const tomorrowTotal = tomorrowSales.reduce((sum, order) => sum + order.total, 0);
+    const yesterdayTotal = yesterdaySales.reduce((sum, order) => sum + order.total, 0);
+    
+    // Get all sales with date labels
+    const allSalesWithLabels = mockSalesData.map(order => ({
+      ...order,
+      dateLabel: getDateLabel(order.date),
+      isToday: isToday(order.date),
+      isTomorrow: isTomorrow(order.date),
+      isYesterday: isYesterday(order.date)
+    }));
+    
+    res.json({
+      dateInfo: {
+        today: {
+          date: today,
+          label: 'Today',
+          sales: todaySales,
+          total: todayTotal,
+          count: todaySales.length
+        },
+        tomorrow: {
+          date: tomorrow,
+          label: 'Tomorrow',
+          sales: tomorrowSales,
+          total: tomorrowTotal,
+          count: tomorrowSales.length
+        },
+        yesterday: {
+          date: yesterday,
+          label: 'Yesterday',
+          sales: yesterdaySales,
+          total: yesterdayTotal,
+          count: yesterdaySales.length
+        }
+      },
+      allSales: allSalesWithLabels,
+      summary: {
+        totalSales: mockSalesData.length,
+        totalRevenue: mockSalesData.reduce((sum, order) => sum + order.total, 0),
+        todaySales: todaySales.length,
+        todayRevenue: todayTotal,
+        tomorrowSales: tomorrowSales.length,
+        tomorrowRevenue: tomorrowTotal,
+        yesterdaySales: yesterdaySales.length,
+        yesterdayRevenue: yesterdayTotal
+      }
+    });
+  } catch (error) {
+    console.error('Error analyzing sales dates:', error);
+    res.status(500).json({ error: 'Failed to analyze sales dates', details: error.message });
+  }
+}
 
 async function generateSalesReport(req, res) {
   try {
@@ -305,4 +560,189 @@ async function generateSalesReport(req, res) {
   }
 }
 
-module.exports = { generateSalesReport }; 
+// Get dashboard analytics data
+async function getDashboardAnalytics(req, res) {
+  try {
+    const { period = 'daily' } = req.query;
+    const today = getTodayDate();
+    
+    // Filter today's orders
+    const todayOrders = mockSalesData.filter(order => order.date === today);
+    
+    // Calculate sales overview data
+    const salesOverview = calculateSalesOverview(period);
+    
+    // Calculate top selling items
+    const topSellingItems = calculateTopSellingItems(todayOrders);
+    
+    // Calculate today's sale summary
+    const todaySaleSummary = calculateTodaySaleSummary(todayOrders);
+    
+    res.json({
+      salesOverview,
+      topSellingItems,
+      todaySaleSummary
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard analytics', details: error.message });
+  }
+}
+
+// Calculate sales overview data for different periods
+function calculateSalesOverview(period) {
+  const today = getTodayDate();
+  
+  if (period === 'daily') {
+    // Last 7 days
+    const dailyData = [];
+    const labels = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+      
+      const dayOrders = mockSalesData.filter(order => order.date === dateStr);
+      const dayRevenue = dayOrders.reduce((sum, order) => sum + order.total, 0);
+      
+      dailyData.push(dayRevenue);
+      labels.push(dayName);
+    }
+    
+    return {
+      labels,
+      data: dailyData
+    };
+  } else if (period === 'weekly') {
+    // Last 4 weeks
+    const weeklyData = [];
+    const labels = [];
+    
+    for (let i = 3; i >= 0; i--) {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - (weekStart.getDay() + 7 * i));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      const weekOrders = mockSalesData.filter(order => {
+        const orderDate = new Date(order.date);
+        return orderDate >= weekStart && orderDate <= weekEnd;
+      });
+      
+      const weekRevenue = weekOrders.reduce((sum, order) => sum + order.total, 0);
+      
+      weeklyData.push(weekRevenue);
+      labels.push(`Week ${4 - i}`);
+    }
+    
+    return {
+      labels,
+      data: weeklyData
+    };
+  } else {
+    // Last 7 months
+    const monthlyData = [];
+    const labels = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const month = new Date();
+      month.setMonth(month.getMonth() - i);
+      const monthName = month.toLocaleDateString('en-US', { month: 'short' });
+      
+      const monthOrders = mockSalesData.filter(order => {
+        const orderDate = new Date(order.date);
+        return orderDate.getMonth() === month.getMonth() && 
+               orderDate.getFullYear() === month.getFullYear();
+      });
+      
+      const monthRevenue = monthOrders.reduce((sum, order) => sum + order.total, 0);
+      
+      monthlyData.push(monthRevenue);
+      labels.push(monthName);
+    }
+    
+    return {
+      labels,
+      data: monthlyData
+    };
+  }
+}
+
+// Calculate top selling items
+function calculateTopSellingItems(orders) {
+  const itemSales = {};
+  
+  orders.forEach(order => {
+    order.items.forEach(item => {
+      if (!itemSales[item.name]) {
+        itemSales[item.name] = {
+          name: item.name,
+          sold: 0,
+          revenue: 0
+        };
+      }
+      itemSales[item.name].sold += item.quantity;
+      itemSales[item.name].revenue += item.price * item.quantity;
+    });
+  });
+  
+  // Sort by quantity sold and return top 5
+  return Object.values(itemSales)
+    .sort((a, b) => b.sold - a.sold)
+    .slice(0, 5);
+}
+
+// Calculate today's sale summary
+function calculateTodaySaleSummary(orders) {
+  const summary = {
+    cashSale: 0,
+    cashlessSale: 0,
+    totalDiscount: 0,
+    totalSale: 0,
+    items: []
+  };
+  
+  const itemMap = new Map();
+  
+  orders.forEach(order => {
+    // Calculate payment method totals
+    if (order.paymentMethod === 'cash') {
+      summary.cashSale += order.total;
+    } else {
+      summary.cashlessSale += order.total;
+    }
+    
+    summary.totalDiscount += order.discount || 0;
+    summary.totalSale += order.total;
+    
+    // Aggregate items
+    order.items.forEach(item => {
+      if (itemMap.has(item.name)) {
+        const existing = itemMap.get(item.name);
+        existing.qty += item.quantity;
+        existing.total += item.price * item.quantity;
+      } else {
+        itemMap.set(item.name, {
+          item: item.name,
+          qty: item.quantity,
+          price: item.price,
+          total: item.price * item.quantity
+        });
+      }
+    });
+  });
+  
+  summary.items = Array.from(itemMap.values())
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 7);
+  
+  return summary;
+}
+
+module.exports = { 
+  generateSalesReport, 
+  getSalesDateAnalysis,
+  getDashboardAnalytics
+}; 

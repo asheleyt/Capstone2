@@ -1,9 +1,12 @@
 const express = require('express');
-const { generateSalesReport } = require('../controllers/salesController');
+const { generateSalesReport, getDashboardAnalytics } = require('../controllers/salesController');
 
 const router = express.Router();
 
 // GET /api/sales/report - Generate and download sales report
 router.get('/report', generateSalesReport);
+
+// GET /api/sales/dashboard - Get dashboard analytics data
+router.get('/dashboard', getDashboardAnalytics);
 
 module.exports = router; 
