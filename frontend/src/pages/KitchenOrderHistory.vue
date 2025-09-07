@@ -250,8 +250,8 @@ function goToPOS() {
   router.push('/kitchen/pos');
 }
 
+const { logout } = useAuth();
 async function handleLogout() {
-  const { logout } = useAuth();
   await logout();
 }
 </script> 

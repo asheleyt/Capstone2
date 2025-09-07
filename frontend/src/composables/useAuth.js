@@ -55,25 +55,12 @@ export function useAuth() {
   };
 
   const logout = async () => {
-    try {
-      // Call logout endpoint to log the activity
-      if (token.value) {
-        await fetch('http://localhost:5000/api/users/logout', {
-          method: 'POST',
-          headers: getAuthHeaders()
-        });
-      }
-    } catch (error) {
-      console.error('Error calling logout endpoint:', error);
-      // Continue with logout even if API call fails
-    } finally {
-      // Clear local data regardless of API call result
-      user.value = null;
-      token.value = null;
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      router.push('/login');
-    }
+    // Client-only logout
+    user.value = null;
+    token.value = null;
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    router.push('/login');
   };
 
   const getAuthHeaders = () => {

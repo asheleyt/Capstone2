@@ -1,15 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+// const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const {
   getActivityLogsHandler,
   getActivityStatsHandler,
   getAvailableActionsHandler
 } = require('../controllers/activityLogsController');
 
-// All activity logs routes require authentication and admin privileges
-router.use(authenticateToken);
-router.use(requireAdmin);
+// Make activity logs routes public for now
 
 // Get activity logs with filtering and pagination
 router.get('/', getActivityLogsHandler);

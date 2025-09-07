@@ -6,7 +6,7 @@
         <span class="w-5 h-5 bg-gray-300 rounded-full inline-block"></span>
         <span class="text-xl font-bold text-gray-800">Kitchen</span>
       </div>
-      <button @click="handleLogout" class="btn btn-error">Logout</button>
+      <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
     </header>
 
     <!-- Main Content -->
@@ -51,7 +51,7 @@ import { io } from 'socket.io-client';
 import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
-const { getAuthHeaders } = useAuth();
+const { getAuthHeaders, logout } = useAuth();
 const orders = ref([]);
 const socket = io('http://localhost:5000');
 
@@ -102,7 +102,6 @@ function setStatus(order, newStatus) {
 }
 
 async function handleLogout() {
-  const { logout } = useAuth();
   await logout();
 }
 </script> 

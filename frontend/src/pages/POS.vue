@@ -33,7 +33,7 @@
           />
         </div>
         <div class="flex space-x-3 items-center">
-          <button @click="handleLogout" class="btn ml-4">Logout</button>
+          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
         </div>
       </header>
 
@@ -552,8 +552,8 @@ const change = computed(() => {
   return totalAmountReceived.value - total.value;
 });
 
+const { logout } = useAuth();
 async function handleLogout() {
-  const { logout } = useAuth();
   await logout();
 }
 

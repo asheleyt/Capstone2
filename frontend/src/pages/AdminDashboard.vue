@@ -15,7 +15,7 @@
           <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Excel Report</a>
           <a @click.prevent="goToActivityLogs" class="text-gray-700 hover:underline cursor-pointer">Activity Logs</a>
           <a @click.prevent="goToManageUsers" class="text-gray-700 hover:underline cursor-pointer">Manage users</a>
-          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #ef4444 !important;">Logout</button>
+          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
         </div>
       </nav>
 
@@ -142,7 +142,12 @@ async function fetchInventory() {
   inventoryLoading.value = true;
   inventoryError.value = '';
   try {
-    const res = await fetch('http://localhost:5000/api/inventory');
+    const res = await fetch('http://localhost:5000/api/inventory', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
     if (!res.ok) throw new Error('Failed to fetch inventory');
     inventory.value = await res.json();
   } catch (e) {
@@ -258,8 +263,8 @@ const saleSummary = computed(() => {
   return Array.from(itemMap.values()).slice(0, 7); // Show top 7 items
 });
 
+const { logout } = useAuth();
 async function handleLogout() {
-  const { logout } = useAuth();
   await logout();
 }
 

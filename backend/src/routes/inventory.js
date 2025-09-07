@@ -9,26 +9,26 @@ const {
   searchInventory,
   getProductsForPOSHandler,
 } = require('../controllers/inventoryController');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+// const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { activityLoggers } = require('../middleware/activityLogger');
 
 const router = express.Router();
 
 // Get all inventory items with batches
-router.get('/', authenticateToken, getInventory);
+router.get('/', getInventory);
 // Add new inventory item
-router.post('/', authenticateToken, requireAdmin, activityLoggers.addInventory, addInventoryItem);
+router.post('/', activityLoggers.addInventory, addInventoryItem);
 // Update inventory item
-router.put('/:id', authenticateToken, requireAdmin, activityLoggers.updateInventory, updateInventoryItemHandler);
+router.put('/:id', activityLoggers.updateInventory, updateInventoryItemHandler);
 // Delete inventory item
-router.delete('/:id', authenticateToken, requireAdmin, activityLoggers.deleteInventory, deleteInventoryItemHandler);
+router.delete('/:id', activityLoggers.deleteInventory, deleteInventoryItemHandler);
 // Add batch to item
-router.post('/batch', authenticateToken, requireAdmin, addBatchHandler);
+router.post('/batch', addBatchHandler);
 // Discard batch
-router.delete('/batch/:batchId', authenticateToken, requireAdmin, discardBatchHandler);
+router.delete('/batch/:batchId', discardBatchHandler);
 // Search inventory
-router.get('/search', authenticateToken, searchInventory);
+router.get('/search', searchInventory);
 // Get products for POS
-router.get('/pos', authenticateToken, getProductsForPOSHandler);
+router.get('/pos', getProductsForPOSHandler);
 
 module.exports = router; 

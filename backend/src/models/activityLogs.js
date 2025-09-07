@@ -65,7 +65,6 @@ async function getActivityLogs(filters = {}) {
       SELECT 
         al.*,
         u.username,
-        u.email,
         u.role
       FROM activity_logs al
       JOIN users u ON al.user_id = u.id

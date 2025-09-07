@@ -13,7 +13,7 @@
           <span class="text-gray-700 font-semibold">Inventory Management/Order History</span>
           <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Sales Report</a>
           <a @click.prevent="goToManageUsers" class="text-gray-700 hover:underline cursor-pointer">Manage users</a>
-          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #ef4444 !important;">Logout</button>
+          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
         </div>
       </div>
     </nav>
@@ -252,7 +252,12 @@ async function fetchInventory() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await fetch('http://localhost:5000/api/inventory');
+    const res = await fetch('http://localhost:5000/api/inventory', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
     if (!res.ok) throw new Error('Failed to fetch inventory');
     inventory.value = await res.json();
   } catch (e) {
@@ -303,7 +308,7 @@ async function submitRawMaterial() {
     // 1. Create item
     const res = await fetch('http://localhost:5000/api/inventory', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({
         name: rawForm.value.name,
         type: 'raw',
@@ -317,7 +322,7 @@ async function submitRawMaterial() {
     // 2. Add batch
     const batchRes = await fetch('http://localhost:5000/api/inventory/batch', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({
         itemId: item.id,
         quantity: rawForm.value.quantity,
@@ -357,7 +362,7 @@ async function submitProduct() {
     // 1. Create item
     const res = await fetch('http://localhost:5000/api/inventory', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
               body: JSON.stringify({
           name: productForm.value.name,
           type: 'Product',
@@ -372,7 +377,7 @@ async function submitProduct() {
     // 2. Add batch
     const batchRes = await fetch('http://localhost:5000/api/inventory/batch', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({
         itemId: item.id,
         quantity: productForm.value.quantity,
@@ -404,7 +409,7 @@ async function submitEditBatch() {
     if (editBatchForm.value.quantity < 1) throw new Error('Quantity must be at least 1');
     await fetch('http://localhost:5000/api/inventory/batch', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({
         itemId: editItem.value.id,
         quantity: editBatchForm.value.quantity,
@@ -424,13 +429,13 @@ async function submitEditBatch() {
 async function discardBatch(itemId, batchId) {
   // Always confirm before discarding
   if (confirm('Are you sure you want to discard this batch?')) {
-    await fetch(`http://localhost:5000/api/inventory/batch/${batchId}`, { method: 'DELETE' });
+    await fetch(`http://localhost:5000/api/inventory/batch/${batchId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
     await fetchInventory();
   }
 }
 async function discardItem(itemId) {
   if (confirm('Are you sure you want to discard this entire item and all its batches?')) {
-    await fetch(`http://localhost:5000/api/inventory/${itemId}`, { method: 'DELETE' });
+    await fetch(`http://localhost:5000/api/inventory/${itemId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
     await fetchInventory();
   }
 }
@@ -441,8 +446,8 @@ function goToDashboard() {
 function goToManageUsers() {
   router.push('/admin/manage-users');
 }
+const { logout } = useAuth();
 async function handleLogout() {
-  const { logout } = useAuth();
   await logout();
 }
 

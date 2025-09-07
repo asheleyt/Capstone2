@@ -336,8 +336,8 @@ function goToManageUsers() {
   router.push('/admin/manage-users');
 }
 
+const { logout } = useAuth();
 async function handleLogout() {
-  const { logout } = useAuth();
   await logout();
 }
 

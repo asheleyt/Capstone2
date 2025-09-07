@@ -47,7 +47,6 @@ async function getActivityLogsHandler(req, res) {
       user: {
         id: log.user_id,
         username: log.username,
-        email: log.email,
         role: log.role
       },
       action: log.action,
