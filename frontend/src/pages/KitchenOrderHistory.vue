@@ -174,6 +174,7 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrders } from '../composables/useOrders';
+import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
 const { completedOrders, totalRevenue, getOrdersByDate } = useOrders();
@@ -249,8 +250,8 @@ function goToPOS() {
   router.push('/kitchen/pos');
 }
 
-function handleLogout() {
-  localStorage.removeItem('user');
-  router.push('/login');
+const { logout } = useAuth();
+async function handleLogout() {
+  await logout();
 }
 </script> 

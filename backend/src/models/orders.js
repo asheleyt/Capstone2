@@ -1,0 +1,202 @@
+const pool = require('../db');
+
+// Create orders tables if they don't exist
+async function initOrdersTables() {
+  try {
+    // Create orders table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        order_number VARCHAR(20) UNIQUE NOT NULL,
+        customer_name VARCHAR(100),
+        table_number VARCHAR(20),
+        order_type VARCHAR(20) DEFAULT 'dine-in',
+        payment_method VARCHAR(20) DEFAULT 'Cash',
+        notes TEXT,
+        subtotal DECIMAL(10,2) NOT NULL,
+        discount DECIMAL(10,2) DEFAULT 0.00,
+        total DECIMAL(10,2) NOT NULL,
+        amount_received DECIMAL(10,2) DEFAULT 0.00,
+        change_amount DECIMAL(10,2) DEFAULT 0.00,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP
+      );
+    `);
+
+    // Create order_items table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS order_items (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+        product_id INTEGER REFERENCES inventory_items(id),
+        product_name VARCHAR(100) NOT NULL,
+        quantity INTEGER NOT NULL,
+        unit_price DECIMAL(10,2) NOT NULL,
+        total_price DECIMAL(10,2) NOT NULL
+      );
+    `);
+
+    console.log('Orders tables initialized successfully');
+  } catch (error) {
+    console.error('Error initializing orders tables:', error);
+    throw error;
+  }
+}
+
+// Generate unique order number
+async function generateOrderNumber() {
+  const result = await pool.query(
+    "SELECT COUNT(*) as count FROM orders WHERE DATE(created_at) = CURRENT_DATE"
+  );
+  const todayCount = parseInt(result.rows[0].count) + 1;
+  const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  return `${date}-${todayCount.toString().padStart(3, '0')}`;
+}
+
+// Create a new order
+async function createOrder(orderData) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Generate order number
+    const orderNumber = await generateOrderNumber();
+    
+    // Create order
+    const orderResult = await client.query(
+      `INSERT INTO orders (
+        order_number, customer_name, table_number, order_type, payment_method, 
+        notes, subtotal, discount, total, amount_received, change_amount, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [
+        orderNumber,
+        orderData.customerName || null,
+        orderData.tableNumber || null,
+        orderData.orderType || 'dine-in',
+        orderData.paymentMethod || 'Cash',
+        orderData.notes || null,
+        orderData.subtotal,
+        orderData.discount || 0,
+        orderData.total,
+        orderData.amountReceived || 0,
+        orderData.changeAmount || 0,
+        'pending'
+      ]
+    );
+    
+    const order = orderResult.rows[0];
+    
+    // Add order items
+    for (const item of orderData.items) {
+      await client.query(
+        `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          order.id,
+          item.id,
+          item.name,
+          item.quantity,
+          item.price,
+          item.price * item.quantity
+        ]
+      );
+    }
+    
+    await client.query('COMMIT');
+    return order;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Get all orders
+async function getAllOrders() {
+  const result = await pool.query(`
+    SELECT 
+      o.*,
+      json_agg(
+        json_build_object(
+          'id', oi.id,
+          'product_id', oi.product_id,
+          'product_name', oi.product_name,
+          'quantity', oi.quantity,
+          'unit_price', oi.unit_price,
+          'total_price', oi.total_price
+        )
+      ) as items
+    FROM orders o
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    GROUP BY o.id
+    ORDER BY o.created_at DESC
+  `);
+  return result.rows;
+}
+
+// Get order by ID
+async function getOrderById(id) {
+  const result = await pool.query(`
+    SELECT 
+      o.*,
+      json_agg(
+        json_build_object(
+          'id', oi.id,
+          'product_id', oi.product_id,
+          'product_name', oi.product_name,
+          'quantity', oi.quantity,
+          'unit_price', oi.unit_price,
+          'total_price', oi.total_price
+        )
+      ) as items
+    FROM orders o
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    WHERE o.id = $1
+    GROUP BY o.id
+  `, [id]);
+  return result.rows[0];
+}
+
+// Update order status
+async function updateOrderStatus(id, status) {
+  const result = await pool.query(
+    'UPDATE orders SET status = $1, completed_at = CASE WHEN $1 = $2 THEN CURRENT_TIMESTAMP ELSE completed_at END WHERE id = $3 RETURNING *',
+    [status, 'completed', id]
+  );
+  return result.rows[0];
+}
+
+// Get orders by status
+async function getOrdersByStatus(status) {
+  const result = await pool.query(`
+    SELECT 
+      o.*,
+      json_agg(
+        json_build_object(
+          'id', oi.id,
+          'product_id', oi.product_id,
+          'product_name', oi.product_name,
+          'quantity', oi.quantity,
+          'unit_price', oi.unit_price,
+          'total_price', oi.total_price
+        )
+      ) as items
+    FROM orders o
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    WHERE o.status = $1
+    GROUP BY o.id
+    ORDER BY o.created_at ASC
+  `, [status]);
+  return result.rows;
+}
+
+module.exports = {
+  initOrdersTables,
+  createOrder,
+  getAllOrders,
+  getOrderById,
+  updateOrderStatus,
+  getOrdersByStatus,
+}; 

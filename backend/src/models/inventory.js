@@ -16,6 +16,15 @@ async function initInventoryTables() {
       );
     `);
 
+    // Add price column if it doesn't exist (migration)
+    try {
+      await pool.query('ALTER TABLE inventory_items ADD COLUMN price DECIMAL(10,2) DEFAULT 0.00');
+      console.log('Price column added to inventory_items table');
+    } catch (error) {
+      // Column already exists, ignore error
+      console.log('Price column already exists in inventory_items table');
+    }
+
     // Create inventory_batches table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS inventory_batches (
@@ -83,7 +92,7 @@ async function addBatch({ itemId, quantity, expiry }) {
 
 async function getBatchesByItemId(itemId) {
   const result = await pool.query(
-    'SELECT * FROM inventory_batches WHERE item_id = $1 ORDER BY expiry ASC',
+    'SELECT * FROM inventory_batches WHERE item_id = $1 ORDER BY expiry ASC, id ASC',
     [itemId]
   );
   return result.rows;
@@ -112,6 +121,37 @@ async function getProductsForPOS() {
   return result.rows;
 }
 
+// Consume stock FIFO across batches for a given product
+async function consumeStockFIFO(itemId, quantity) {
+  if (!quantity || quantity <= 0) return;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const batchesRes = await client.query(
+      'SELECT id, quantity FROM inventory_batches WHERE item_id = $1 ORDER BY expiry ASC, id ASC FOR UPDATE',
+      [itemId]
+    );
+    let remaining = quantity;
+    for (const b of batchesRes.rows) {
+      if (remaining <= 0) break;
+      const consume = Math.min(remaining, b.quantity);
+      const newQty = b.quantity - consume;
+      if (newQty === 0) {
+        await client.query('DELETE FROM inventory_batches WHERE id = $1', [b.id]);
+      } else {
+        await client.query('UPDATE inventory_batches SET quantity = $1 WHERE id = $2', [newQty, b.id]);
+      }
+      remaining -= consume;
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // Initialize sample products for testing
 async function initializeSampleProducts() {
   try {
@@ -138,16 +178,16 @@ async function initializeSampleProducts() {
       { name: 'Fried Rice', type: 'Product', lowStockThreshold: 20, price: 70.00 }
     ];
 
-          // Create products
-      for (const product of sampleProducts) {
-        const createdProduct = await createInventoryItem({
-          name: product.name,
-          type: product.type,
-          lowStockThreshold: product.lowStockThreshold,
-          requiresRawMaterials: false,
-          rawMaterials: [],
-          price: product.price
-        });
+    // Create products
+    for (const product of sampleProducts) {
+      const createdProduct = await createInventoryItem({
+        name: product.name,
+        type: product.type,
+        lowStockThreshold: product.lowStockThreshold,
+        requiresRawMaterials: false,
+        rawMaterials: [],
+        price: product.price
+      });
 
       // Add some stock for each product
       await addBatch({
@@ -175,4 +215,5 @@ module.exports = {
   getProductsForPOS,
   initializeSampleProducts,
   initInventoryTables,
+  consumeStockFIFO,
 }; 
