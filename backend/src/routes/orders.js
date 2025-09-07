@@ -6,22 +6,24 @@ const {
   updateOrderStatusHandler,
   getOrdersByStatusHandler,
 } = require('../controllers/ordersController');
+const { authenticateToken } = require('../middleware/auth');
+const { activityLoggers } = require('../middleware/activityLogger');
 
 const router = express.Router();
 
 // Create a new order
-router.post('/', createOrderHandler);
+router.post('/', authenticateToken, activityLoggers.createOrder, createOrderHandler);
 
 // Get all orders
-router.get('/', getAllOrdersHandler);
+router.get('/', authenticateToken, getAllOrdersHandler);
 
 // Get order by ID
-router.get('/:id', getOrderByIdHandler);
+router.get('/:id', authenticateToken, getOrderByIdHandler);
 
 // Update order status
-router.put('/:id/status', updateOrderStatusHandler);
+router.put('/:id/status', authenticateToken, activityLoggers.updateOrder, updateOrderStatusHandler);
 
 // Get orders by status
-router.get('/status/:status', getOrdersByStatusHandler);
+router.get('/status/:status', authenticateToken, getOrdersByStatusHandler);
 
 module.exports = router; 

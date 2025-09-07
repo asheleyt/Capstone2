@@ -205,6 +205,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import CalendarPopup from '../components/CalendarPopup.vue';
 import { useOrders } from '../composables/useOrders';
+import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
 const showCalendar = ref(false);
@@ -440,8 +441,9 @@ function goToDashboard() {
 function goToManageUsers() {
   router.push('/admin/manage-users');
 }
-function handleLogout() {
-  router.push('/login');
+async function handleLogout() {
+  const { logout } = useAuth();
+  await logout();
 }
 
 async function downloadSalesReport() {

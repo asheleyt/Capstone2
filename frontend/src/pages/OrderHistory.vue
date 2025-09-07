@@ -30,11 +30,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useAuth } from '../composables/useAuth';
 
+const { getAuthHeaders } = useAuth();
 const orders = ref([]);
 
 async function fetchOrders() {
-  const res = await fetch('http://localhost:5000/api/orders');
+  const res = await fetch('http://localhost:5000/api/orders', {
+    headers: getAuthHeaders()
+  });
   orders.value = await res.json();
 }
 

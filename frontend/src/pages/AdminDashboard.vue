@@ -6,20 +6,16 @@
       <nav class="flex items-center justify-between bg-white px-6 py-3 shadow-sm border-b">
         <div class="flex items-center">
           <span class="w-8 h-8 bg-gray-200 rounded-full mr-3"></span>
-          <div>
-            <span class="text-xl font-bold">Admin</span>
-            <div class="text-sm text-gray-600" v-if="currentUser">{{ currentUser.username }}</div>
-          </div>
+          <span class="text-xl font-bold">Admin</span>
         </div>
         <div class="flex items-center space-x-6">
           
           <a @click.prevent="showCalendar = true" class="text-gray-700 hover:underline cursor-pointer">Calendar</a>
           <a @click.prevent="goToInventoryOrders" class="text-gray-700 hover:underline cursor-pointer">Inventory Management/Order History</a>
-          <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Excel</a>
+          <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Excel Report</a>
+          <a @click.prevent="goToActivityLogs" class="text-gray-700 hover:underline cursor-pointer">Activity Logs</a>
           <a @click.prevent="goToManageUsers" class="text-gray-700 hover:underline cursor-pointer">Manage users</a>
-          <button @click="confirmLogout" class="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded font-bold text-base transition-colors duration-200 shadow-sm" style="color: #ffffff !important;">
-            Logout
-          </button>
+          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #ef4444 !important;">Logout</button>
         </div>
       </nav>
 
@@ -30,8 +26,8 @@
           <CalendarPopup />
         </div>
       </div>
-
-      <!-- Main Content -->
+<!--test-->>
+      <!-- Main Content --> 
       <div class="p-6 grid grid-cols-2 gap-6">
         <!-- Left Column -->
         <div class="flex flex-col gap-6">
@@ -40,34 +36,24 @@
             <div class="flex items-center justify-between mb-2">
               <h2 class="text-2xl font-bold text-left text-gray-800">Sales Overview</h2>
               <div class="space-x-2">
-                <button v-for="type in ['Daily', 'Weekly', 'Monthly']" :key="type" @click="handlePeriodChange(type)" :class="[selectedType === type ? 'btn btn-primary' : 'btn btn-outline', 'px-3 py-1 rounded border']">{{ type }}</button>
+                <button v-for="type in ['Daily', 'Weekly', 'Monthly']" :key="type" @click="selectedType = type" :class="[selectedType === type ? 'btn btn-primary' : 'btn btn-outline', 'px-3 py-1 rounded border']">{{ type }}</button>
               </div>
             </div>
-            <div v-if="dashboardLoading" class="h-56 flex items-center justify-center">
-              <div class="text-gray-500">Loading sales data...</div>
-            </div>
-            <div v-else-if="dashboardError" class="h-56 flex items-center justify-center">
-              <div class="text-red-500">{{ dashboardError }}</div>
-            </div>
-            <div v-else class="h-56">
+            <div class="h-56">
               <line-chart :chart-data="chartData" />
             </div>
           </div>
           <!-- Top Selling Items -->
           <div class="bg-white rounded-lg shadow p-6 border">
             <h2 class="text-xl font-bold mb-2 text-left text-gray-800">Top Selling items</h2>
-            <div v-if="dashboardLoading" class="text-gray-500">Loading top selling items...</div>
-            <div v-else-if="dashboardError" class="text-red-500">{{ dashboardError }}</div>
-            <div v-else>
-              <table class="w-full text-left border-t border-b">
-                <tbody>
-                  <tr v-for="item in topSelling" :key="item.name" class="border-b last:border-b-0">
-                    <td class="py-1 font-semibold text-gray-800">{{ item.name }}</td>
-                    <td class="py-1 text-right font-semibold text-gray-800">{{ item.sold }} sold</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <table class="w-full text-left border-t border-b">
+              <tbody>
+                <tr v-for="item in topSelling" :key="item.name" class="border-b last:border-b-0">
+                  <td class="py-1 font-semibold text-gray-800">{{ item.name }}</td>
+                  <td class="py-1 text-right font-semibold text-gray-800">{{ item.sold }} sold</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
         <!-- Right Column -->
@@ -75,33 +61,29 @@
           <!-- Today's Sale Summary -->
           <div class="bg-white rounded-lg shadow p-6 border">
             <h2 class="text-2xl font-bold mb-2 text-left text-gray-800">Today's Sale Summary</h2>
-            <div v-if="dashboardLoading" class="text-gray-500">Loading sale summary...</div>
-            <div v-else-if="dashboardError" class="text-red-500">{{ dashboardError }}</div>
-            <div v-else>
-              <table class="w-full text-sm mb-2 border-t border-b">
-                <thead>
-                  <tr class="border-b">
-                    <th class="font-bold text-left text-gray-800">Item</th>
-                    <th class="font-bold text-left text-gray-800">Qty</th>
-                    <th class="font-bold text-left text-gray-800">Price</th>
-                    <th class="font-bold text-left text-gray-800">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in saleSummary" :key="row.item" class="border-b last:border-b-0">
-                    <td class="text-gray-800">{{ row.item }}</td>
-                    <td class="text-gray-800">{{ row.qty }}</td>
-                    <td class="text-gray-800">₱{{ row.price }}</td>
-                    <td class="text-gray-800">₱{{ row.total }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div class="flex justify-between text-xs mt-2 gap-2">
-                <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cash sale<br><span class="font-semibold">₱{{ cashSale.toFixed(2) }}</span></div>
-                <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cashless sale<br><span class="font-semibold">₱{{ cashlessSale.toFixed(2) }}</span></div>
-                <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Discount<br><span class="font-semibold">₱{{ totalDiscount.toFixed(2) }}</span></div>
-                <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Sale<br><span class="font-semibold">₱{{ totalSale.toFixed(2) }}</span></div>
-              </div>
+            <table class="w-full text-sm mb-2 border-t border-b">
+              <thead>
+                <tr class="border-b">
+                  <th class="font-bold text-left text-gray-800">Item</th>
+                  <th class="font-bold text-left text-gray-800">Qty</th>
+                  <th class="font-bold text-left text-gray-800">Price</th>
+                  <th class="font-bold text-left text-gray-800">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in saleSummary" :key="row.item" class="border-b last:border-b-0">
+                  <td class="text-gray-800">{{ row.item }}</td>
+                  <td class="text-gray-800">{{ row.qty }}</td>
+                  <td class="text-gray-800">₱{{ row.price }}</td>
+                  <td class="text-gray-800">₱{{ row.total }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="flex justify-between text-xs mt-2 gap-2">
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cash sale<br><span class="font-semibold">₱1075.00</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cashless sale<br><span class="font-semibold">₱610.00</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Discount<br><span class="font-semibold">₱30.00</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Sale<br><span class="font-semibold">₱1715.00</span></div>
             </div>
           </div>
           <!-- Inventory Alerts -->
@@ -143,51 +125,13 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import LineChart from '../components/LineChart.vue';
 import CalendarPopup from '../components/CalendarPopup.vue';
-import { useDashboard } from '../composables/useDashboard';
+import { useOrders } from '../composables/useOrders';
+import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
 const selectedType = ref('Daily');
 const showCalendar = ref(false);
-const currentUser = ref(null);
-
-// Check authentication on component mount
-onMounted(() => {
-  const user = localStorage.getItem('user');
-  if (!user) {
-    alert('Please login to access the admin dashboard.');
-    router.push('/login');
-    return;
-  }
-  
-  try {
-    const userData = JSON.parse(user);
-    if (userData.role !== 'Admin') {
-      alert('Access denied. Admin privileges required.');
-      router.push('/login');
-      return;
-    }
-    currentUser.value = userData;
-  } catch (error) {
-    alert('Invalid user session. Please login again.');
-    localStorage.removeItem('user');
-    router.push('/login');
-    return;
-  }
-});
-
-// Use dashboard composable
-const {
-  loading: dashboardLoading,
-  error: dashboardError,
-  chartData,
-  topSelling,
-  saleSummary,
-  cashSale,
-  cashlessSale,
-  totalDiscount,
-  totalSale,
-  fetchDashboardData
-} = useDashboard();
+const { completedOrders, todayRevenue } = useOrders();
 
 // --- Inventory Alerts: Fetch inventory from backend ---
 const inventory = ref([]);
@@ -244,32 +188,79 @@ const expiringItems = computed(() => {
   return result;
 });
 
-// Handle period change for sales overview
-function handlePeriodChange(period) {
-  selectedType.value = period;
-  const periodMap = {
-    'Daily': 'daily',
-    'Weekly': 'weekly',
-    'Monthly': 'monthly'
-  };
-  fetchDashboardData(periodMap[period]);
-}
-
-function confirmLogout() {
-  if (confirm('Are you sure you want to logout?')) {
-    handleLogout();
+const chartData = computed(() => {
+  // Mock data for chart
+  if (selectedType.value === 'Daily') {
+    return {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [{
+        label: 'Sales',
+        data: [10, 40, 80, 30, 50, 40, 60],
+        borderColor: '#222',
+        fill: false,
+      }],
+    };
+  } else if (selectedType.value === 'Weekly') {
+    return {
+      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+      datasets: [{
+        label: 'Sales',
+        data: [200, 350, 300, 400],
+        borderColor: '#222',
+        fill: false,
+      }],
+    };
+  } else {
+    return {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+      datasets: [{
+        label: 'Sales',
+        data: [1200, 1500, 1100, 1800, 1700, 1600, 1750],
+        borderColor: '#222',
+        fill: false,
+      }],
+    };
   }
-}
+});
 
-function handleLogout() {
-  // Clear user authentication data
-  localStorage.removeItem('user');
+const topSelling = [
+  { name: 'product', sold: 30 },
+  { name: 'product', sold: 25 },
+  { name: 'product', sold: 20 },
+  { name: 'product', sold: 15 },
+  { name: 'product', sold: 10 },
+];
+
+// Generate sales summary from actual order data
+const saleSummary = computed(() => {
+  const today = new Date().toISOString().split('T')[0];
+  const todayOrders = completedOrders.value.filter(order => order.date === today);
   
-  // Show logout confirmation
-  alert('You have been logged out successfully.');
+  // Group items by name and sum quantities
+  const itemMap = new Map();
   
-  // Redirect to login page
-  router.push('/login');
+  todayOrders.forEach(order => {
+    order.items.forEach(item => {
+      if (itemMap.has(item.name)) {
+        itemMap.get(item.name).qty += item.quantity;
+        itemMap.get(item.name).total += item.price * item.quantity;
+      } else {
+        itemMap.set(item.name, {
+          item: item.name,
+          qty: item.quantity,
+          price: item.price,
+          total: item.price * item.quantity
+        });
+      }
+    });
+  });
+  
+  return Array.from(itemMap.values()).slice(0, 7); // Show top 7 items
+});
+
+async function handleLogout() {
+  const { logout } = useAuth();
+  await logout();
 }
 
 function goToAdminPanel() {
@@ -278,6 +269,10 @@ function goToAdminPanel() {
 
 function goToInventoryOrders() {
   router.push('/admin/inventory-orders');
+}
+
+function goToActivityLogs() {
+  router.push('/admin/activity-logs');
 }
 
 function goToManageUsers() {

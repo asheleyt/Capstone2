@@ -48,13 +48,17 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { io } from 'socket.io-client';
+import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
+const { getAuthHeaders } = useAuth();
 const orders = ref([]);
 const socket = io('http://localhost:5000');
 
 async function fetchOrders() {
-  const res = await fetch('http://localhost:5000/api/orders/status/pending');
+  const res = await fetch('http://localhost:5000/api/orders/status/pending', {
+    headers: getAuthHeaders()
+  });
   const data = await res.json();
   orders.value = data.map(order => ({
     id: order.id,
@@ -97,8 +101,8 @@ function setStatus(order, newStatus) {
   order.status = newStatus;
 }
 
-function handleLogout() {
-  localStorage.removeItem('user');
-  router.push('/login');
+async function handleLogout() {
+  const { logout } = useAuth();
+  await logout();
 }
 </script> 

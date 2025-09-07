@@ -8,10 +8,13 @@ async function initUserTable() {
       id SERIAL PRIMARY KEY,
       full_name VARCHAR(100) NOT NULL,
       username VARCHAR(50) UNIQUE NOT NULL,
+      email VARCHAR(100) UNIQUE,
       password VARCHAR(255) NOT NULL,
       role VARCHAR(20) NOT NULL,
       shift VARCHAR(50),
-      salary NUMERIC(12,2)
+      salary NUMERIC(12,2),
+      reset_password_token VARCHAR(255),
+      reset_password_expires TIMESTAMP
     );
   `);
   
@@ -45,12 +48,12 @@ async function createDefaultAccounts() {
 }
 
 // Insert a new user
-async function createUser({ fullName, username, password, role, shift, salary }) {
+async function createUser({ fullName, username, email, password, role, shift, salary }) {
   const result = await pool.query(
-    `INSERT INTO users (full_name, username, password, role, shift, salary)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO users (full_name, username, email, password, role, shift, salary)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [fullName, username, password, role, shift, salary]
+    [fullName, username, email, password, role, shift, salary]
   );
   return result.rows[0];
 }
@@ -86,6 +89,40 @@ async function findUserByUsername(username) {
   return result.rows[0];
 }
 
+// Find user by email
+async function findUserByEmail(email) {
+  const result = await pool.query(
+    `SELECT * FROM users WHERE email = $1`,
+    [email]
+  );
+  return result.rows[0];
+}
+
+// Find user by reset token
+async function findUserByResetToken(token) {
+  const result = await pool.query(
+    `SELECT * FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW()`,
+    [token]
+  );
+  return result.rows[0];
+}
+
+// Set password reset token
+async function setPasswordResetToken(userId, token, expires) {
+  await pool.query(
+    `UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3`,
+    [token, expires, userId]
+  );
+}
+
+// Update user password
+async function updateUserPassword(userId, hashedPassword) {
+  await pool.query(
+    `UPDATE users SET password = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2`,
+    [hashedPassword, userId]
+  );
+}
+
 module.exports = {
   initUserTable,
   createUser,
@@ -93,5 +130,9 @@ module.exports = {
   deleteUser,
   updateUser,
   findUserByUsername,
+  findUserByEmail,
+  findUserByResetToken,
+  setPasswordResetToken,
+  updateUserPassword,
   createDefaultAccounts,
 }; 

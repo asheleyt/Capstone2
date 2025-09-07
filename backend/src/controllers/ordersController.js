@@ -17,8 +17,8 @@ async function createOrderHandler(req, res) {
       return res.status(400).json({ error: 'Order must contain at least one item' });
     }
     
-    if (!orderData.total || orderData.total <= 0) {
-      return res.status(400).json({ error: 'Order total must be greater than 0' });
+    if (orderData.total === undefined || orderData.total < 0) {
+      return res.status(400).json({ error: 'Order total must be 0 or greater' });
     }
     
     const order = await createOrder(orderData);

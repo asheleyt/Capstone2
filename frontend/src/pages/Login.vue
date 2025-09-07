@@ -36,7 +36,7 @@
                 {{ isLoading ? 'Logging in...' : 'Log in' }}
               </button>
               <div class="text-center mt-2">
-                <span class="text-xs">Forgot your password? <a href="#" class="link link-primary">Reset Password</a></span>
+                <span class="text-xs">Forgot your password? <router-link to="/forgot-password" class="link link-primary">Reset Password</router-link></span>
               </div>
               <!-- Temporary account for testing -->
               <div class="text-center mt-4 p-3 bg-base-200 rounded-lg">
@@ -57,8 +57,10 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
+const { login } = useAuth();
 const isLoading = ref(false);
 const errorMessage = ref('');
 
@@ -67,40 +69,27 @@ const formData = ref({
   password: ''
 });
 
-function handleLogout() {
-  localStorage.removeItem('user');
-  router.push('/login');
-}
-
 const handleLogin = async () => {
   isLoading.value = true;
   errorMessage.value = '';
-  try {
-    const response = await fetch('http://localhost:5000/api/users/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData.value)
-    });
-    const data = await response.json();
-    if (response.ok) {
-      localStorage.setItem('user', JSON.stringify(data.user));
-      // Route based on user role
-      if (data.user.role === 'Admin') {
-        router.push('/admin/dashboard');
-      } else if (data.user.role === 'Kitchen') {
-        router.push('/kds');
-      } else if (data.user.role === 'Cashier') {
-        router.push('/pos');
-      } else {
-        router.push('/');
-      }
+  
+  const result = await login(formData.value.username, formData.value.password);
+  
+  if (result.success) {
+    // Route based on user role
+    if (result.user.role === 'Admin') {
+      router.push('/admin/dashboard');
+    } else if (result.user.role === 'Kitchen') {
+      router.push('/kds');
+    } else if (result.user.role === 'Cashier') {
+      router.push('/pos');
     } else {
-      errorMessage.value = data.error || 'Invalid username or password. Please try again.';
+      router.push('/');
     }
-  } catch (err) {
-    errorMessage.value = 'Network error or server not reachable.';
-  } finally {
-    isLoading.value = false;
+  } else {
+    errorMessage.value = result.error || 'Invalid username or password. Please try again.';
   }
+  
+  isLoading.value = false;
 };
 </script> 

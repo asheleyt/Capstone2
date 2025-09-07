@@ -11,7 +11,7 @@
           <a @click.prevent="goToDashboard" class="text-gray-700 hover:underline cursor-pointer">Dashboard</a>
           <a @click.prevent="showCalendar = true" class="text-gray-700 hover:underline cursor-pointer">Calendar</a>
           <a @click.prevent="goToInventoryOrders" class="text-gray-700 hover:underline cursor-pointer">Inventory Management/Order History</a>
-          <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Excel</a>
+          <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Excel Report</a>
           <span class="text-gray-700 font-semibold">Manage users</span>
           <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold">Logout</button>
         </div>
@@ -132,6 +132,10 @@
               <input v-model="newUser.username" type="text" class="input input-bordered w-full" required />
             </div>
             <div class="mb-4">
+              <label class="block mb-1 font-medium text-gray-800">Email</label>
+              <input v-model="newUser.email" type="email" class="input input-bordered w-full" required />
+            </div>
+            <div class="mb-4">
               <label class="block mb-1 font-medium text-gray-800">Password</label>
               <input v-model="newUser.password" type="password" class="input input-bordered w-full" required />
             </div>
@@ -166,9 +170,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
 import CalendarPopup from '../components/CalendarPopup.vue';
 
 const router = useRouter();
+const { makeAuthenticatedRequest, logout } = useAuth();
 const showCalendar = ref(false);
 const showAddUserModal = ref(false);
 const showEditUserModal = ref(false);
@@ -176,6 +182,7 @@ const showEditUserModal = ref(false);
 const newUser = ref({
   fullName: '',
   username: '',
+  email: '',
   password: '',
   role: '',
   shift: '',
@@ -218,7 +225,7 @@ async function fetchUsers() {
   isLoadingUsers.value = true;
   usersError.value = '';
   try {
-    const response = await fetch('http://localhost:5000/api/users');
+    const response = await makeAuthenticatedRequest('http://localhost:5000/api/users');
     if (!response.ok) throw new Error('Failed to fetch users');
     users.value = await response.json();
   } catch (err) {
@@ -239,7 +246,7 @@ function goToInventoryOrders() {
 }
 
 function handleLogout() {
-  router.push('/login');
+  logout();
 }
 
 async function downloadSalesReport() {
@@ -302,22 +309,21 @@ async function submitAddUser() {
   formMessage.value = '';
   formError.value = '';
   try {
-    const response = await fetch('http://localhost:5000/api/users', {
+    const response = await makeAuthenticatedRequest('http://localhost:5000/api/users', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newUser.value)
     });
     const data = await response.json();
     if (response.ok) {
       formMessage.value = 'User created successfully!';
       showAddUserModal.value = false;
-      newUser.value = { fullName: '', username: '', password: '', role: '', shift: '', salary: '' };
+      newUser.value = { fullName: '', username: '', email: '', password: '', role: '', shift: '', salary: '' };
       await fetchUsers();
     } else {
       formError.value = data.error || 'Failed to create user.';
     }
   } catch (err) {
-    formError.value = 'Network error or server not reachable.';
+    formError.value = err.message || 'Network error or server not reachable.';
   } finally {
     isSubmitting.value = false;
   }
@@ -342,9 +348,8 @@ async function submitEditUser() {
   editFormMessage.value = '';
   editFormError.value = '';
   try {
-    const response = await fetch(`http://localhost:5000/api/users/${editUser.value.id}`, {
+    const response = await makeAuthenticatedRequest(`http://localhost:5000/api/users/${editUser.value.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fullName: editUser.value.fullName,
         username: editUser.value.username,
@@ -362,7 +367,7 @@ async function submitEditUser() {
       editFormError.value = data.error || 'Failed to update user.';
     }
   } catch (err) {
-    editFormError.value = 'Network error or server not reachable.';
+    editFormError.value = err.message || 'Network error or server not reachable.';
   } finally {
     isEditing.value = false;
   }
@@ -371,7 +376,7 @@ async function submitEditUser() {
 async function deleteUser(id) {
   if (!confirm('Are you sure you want to delete this user?')) return;
   try {
-    const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+    const response = await makeAuthenticatedRequest(`http://localhost:5000/api/users/${id}`, {
       method: 'DELETE'
     });
     if (response.ok) {
@@ -380,7 +385,7 @@ async function deleteUser(id) {
       alert('Failed to delete user.');
     }
   } catch (err) {
-    alert('Network error or server not reachable.');
+    alert(err.message || 'Network error or server not reachable.');
   }
 }
 </script> 

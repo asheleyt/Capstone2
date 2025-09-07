@@ -330,8 +330,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
+const { getAuthHeaders } = useAuth();
 const products = ref([]);
 const filteredProducts = ref([]);
 const cart = ref([]);
@@ -378,7 +380,9 @@ async function fetchProducts() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await fetch('http://localhost:5000/api/inventory/pos');
+    const res = await fetch('http://localhost:5000/api/inventory/pos', {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error('Failed to fetch products');
     const data = await res.json();
     console.log('Fetched products:', data); // Debug log
@@ -504,6 +508,7 @@ async function checkout() {
     const response = await fetch('http://localhost:5000/api/orders', {
       method: 'POST',
       headers: {
+        ...getAuthHeaders(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(order)
@@ -547,9 +552,9 @@ const change = computed(() => {
   return totalAmountReceived.value - total.value;
 });
 
-function handleLogout() {
-  localStorage.removeItem('user');
-  router.push('/login');
+async function handleLogout() {
+  const { logout } = useAuth();
+  await logout();
 }
 
 function goToOrderHistory() {
@@ -560,7 +565,9 @@ async function fetchOrderHistory() {
   orderHistoryLoading.value = true;
   orderHistoryError.value = '';
   try {
-    const res = await fetch('http://localhost:5000/api/orders');
+    const res = await fetch('http://localhost:5000/api/orders', {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error('Failed to fetch orders');
     const data = await res.json();
     orderHistory.value = data;
