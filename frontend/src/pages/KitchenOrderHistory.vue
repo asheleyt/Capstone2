@@ -10,7 +10,7 @@
         <div class="flex items-center space-x-6">
           <a @click.prevent="goToPOS" class="text-gray-700 hover:underline cursor-pointer">POS System</a>
           <span class="text-gray-700 font-semibold">Order History</span>
-          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold">Logout</button>
+          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
         </div>
       </div>
     </nav>

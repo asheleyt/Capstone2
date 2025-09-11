@@ -1,3 +1,0 @@
-[33m6570085[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mpushing-mid[m[33m, [m[1;31morigin/pushing-mid[m[33m)[m Resolve remaining merge conflict: keep local AdminDashboard.vue; finalize merge
-[33me76658c[m[33m ([m[1;32mmain[m[33m)[m Make APIs public, disable frontend guards, simplify logout; fix activity logs query and headers; update kitchen logout
-[33m9415304[m[33m ([m[1;31mupstream/pushing-mid[m[33m, [m[1;31mupstream/main[m[33m, [m[1;31mupstream/HEAD[m[33m)[m added activity logs and user authentication(both not finish)

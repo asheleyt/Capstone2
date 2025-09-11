@@ -12,7 +12,7 @@
         <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Excel Report</a>
         <a @click.prevent="goToActivityLogs" class="text-blue-600 hover:underline cursor-pointer font-semibold">Activity Logs</a>
         <a @click.prevent="goToManageUsers" class="text-gray-700 hover:underline cursor-pointer">Manage users</a>
-        <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #ef4444 !important;">Logout</button>
+        <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
       </div>
     </nav>
 
@@ -346,8 +346,8 @@ async function downloadSalesReport() {
     const response = await fetch('http://localhost:5000/api/sales/report?reportType=detailed', {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
       },
     });
 

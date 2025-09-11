@@ -30,7 +30,7 @@
           />
         </div>
         <div class="flex space-x-3 items-center">
-          <button @click="handleLogout" class="btn ml-4">Logout</button>
+          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
         </div>
       </header>
 
@@ -200,6 +200,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
 const products = ref([]);
@@ -212,6 +213,14 @@ const currentFilter = ref('all');
 const selectedPaymentMethod = ref('Cash');
 const orderType = ref('dine-in');
 const totalAmountReceived = ref(0);
+const orderNotes = ref('');
+const tableNumber = ref('');
+
+// Order History
+const showOrderHistory = ref(false);
+const orderHistory = ref([]);
+const orderHistoryLoading = ref(false);
+const orderHistoryError = ref('');
 
 // Payment methods
 const paymentMethods = ['Cash', 'maya', 'GCash', 'Card'];
@@ -219,11 +228,30 @@ const paymentMethods = ['Cash', 'maya', 'GCash', 'Card'];
 // Product categories (you can modify this based on your needs)
 const productCategories = ['Food', 'Beverage', 'Dessert'];
 
+// Note templates for quick access
+const noteTemplates = [
+  'No onions',
+  'Extra spicy',
+  'Mild spice',
+  'No rice',
+  'Extra rice',
+  'To go',
+  'For here',
+  'Allergy: nuts',
+  'Allergy: seafood',
+  'Well done',
+  'Medium rare',
+  'Extra sauce',
+  'No sauce'
+];
+
 async function fetchProducts() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await fetch('http://localhost:3000/api/inventory/pos');
+    const res = await fetch('http://localhost:5000/api/inventory/pos', {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error('Failed to fetch products');
     const data = await res.json();
     console.log('Fetched products:', data); // Debug log
@@ -340,9 +368,38 @@ const change = computed(() => {
   return totalAmountReceived.value - total.value;
 });
 
-function handleLogout() {
-  localStorage.removeItem('user');
-  router.push('/login');
+const { logout, getAuthHeaders } = useAuth();
+async function handleLogout() {
+  await logout();
+}
+
+function goToOrderHistory() {
+  router.push('/cashier/order-history');
+}
+
+async function fetchOrderHistory() {
+  orderHistoryLoading.value = true;
+  orderHistoryError.value = '';
+  try {
+    const res = await fetch('http://localhost:5000/api/orders', {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to fetch orders');
+    const data = await res.json();
+    orderHistory.value = data;
+  } catch (e) {
+    console.error('Error fetching order history:', e);
+    orderHistoryError.value = e.message;
+  } finally {
+    orderHistoryLoading.value = false;
+  }
+}
+
+function toggleOrderHistory() {
+  showOrderHistory.value = !showOrderHistory.value;
+  if (showOrderHistory.value && orderHistory.value.length === 0) {
+    fetchOrderHistory();
+  }
 }
 
 onMounted(fetchProducts);

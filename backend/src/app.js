@@ -6,6 +6,8 @@ const { initializeSampleProducts, initInventoryTables } = require('./models/inve
 const userRoutes = require('./routes/user');
 const salesRoutes = require('./routes/sales');
 const inventoryRoutes = require('./routes/inventory');
+const ordersRoutes = require('./routes/orders');
+const activityLogsRoutes = require('./routes/activityLogs');
 require('dotenv').config();
 
 // Handle uncaught exceptions
@@ -27,6 +29,8 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/orders', ordersRoutes);
+app.use('/api/activity-logs', activityLogsRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend is running!');
