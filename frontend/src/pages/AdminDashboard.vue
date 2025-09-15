@@ -2,21 +2,7 @@
   <div>
     
     <div class="min-h-screen bg-gray-50">
-      <!-- Header -->
-      <nav class="flex items-center justify-between bg-white px-6 py-3 shadow-sm border-b">
-        <div class="flex items-center">
-          <span class="w-8 h-8 bg-gray-200 rounded-full mr-3"></span>
-          <span class="text-xl font-bold">Admin</span>
-        </div>
-        <div class="flex items-center space-x-6">
-          
-          <a @click.prevent="showCalendar = true" class="text-gray-700 hover:underline cursor-pointer">Calendar</a>
-          <a @click.prevent="goToInventoryOrders" class="text-gray-700 hover:underline cursor-pointer">Inventory Management/Order History</a>
-          <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Excel</a>
-          <a @click.prevent="goToManageUsers" class="text-gray-700 hover:underline cursor-pointer">Manage users</a>
-          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
-        </div>
-      </nav>
+      <AdminNavbar @show-calendar="showCalendar = true" />
 
       <!-- Calendar Popup -->
       <div v-if="showCalendar" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showCalendar = false">
@@ -126,6 +112,7 @@ import LineChart from '../components/LineChart.vue';
 import CalendarPopup from '../components/CalendarPopup.vue';
 import { useOrders } from '../composables/useOrders';
 import { useAuth } from '../composables/useAuth';
+import AdminNavbar from '../components/AdminNavbar.vue';
 
 const router = useRouter();
 const selectedType = ref('Daily');
@@ -277,6 +264,10 @@ function goToInventoryOrders() {
 
 function goToManageUsers() {
   router.push('/admin/manage-users');
+}
+
+function goToActivityLogs() {
+  router.push('/admin/activity-logs');
 }
 
 async function downloadSalesReport() {

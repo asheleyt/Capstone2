@@ -8,7 +8,8 @@ const salesRoutes = require('./routes/sales');
 const inventoryRoutes = require('./routes/inventory');
 const ordersRoutes = require('./routes/orders');
 const activityLogsRoutes = require('./routes/activityLogs');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {

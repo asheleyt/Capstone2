@@ -51,8 +51,6 @@
               <th class="px-4 py-2 border text-gray-800">Full Name</th>
               <th class="px-4 py-2 border text-gray-800">Username</th>
               <th class="px-4 py-2 border text-gray-800">Role</th>
-              <th class="px-4 py-2 border text-gray-800">Shift</th>
-              <th class="px-4 py-2 border text-gray-800">Salary</th>
               <th class="px-4 py-2 border text-gray-800">Actions</th>
             </tr>
           </thead>
@@ -62,8 +60,6 @@
               <td class="px-4 py-2 border text-gray-800">{{ user.full_name }}</td>
               <td class="px-4 py-2 border text-gray-800">{{ user.username }}</td>
               <td class="px-4 py-2 border text-gray-800">{{ user.role }}</td>
-              <td class="px-4 py-2 border text-gray-800">{{ user.shift }}</td>
-              <td class="px-4 py-2 border text-gray-800">{{ user.salary }}</td>
               <td class="px-4 py-2 border text-gray-800">
                 <button class="text-blue-600 hover:underline mr-2" @click="openEditUser(user)">Edit</button>
                 <button class="text-red-600 hover:underline" @click="deleteUser(user.id)">Delete</button>
@@ -99,14 +95,28 @@
                 <option value="Admin">Admin</option>
               </select>
             </div>
-            <div class="mb-4">
-              <label class="block mb-1 font-medium text-gray-800">Shift Hours</label>
-              <input v-model="editUser.shift" type="text" class="input input-bordered w-full" required />
+            
+            <!-- Security Questions for Admin Users -->
+            <div v-if="editUser.role === 'Admin'" class="border-t pt-4 mt-4">
+              <h3 class="text-lg font-semibold mb-4 text-gray-800">Security Questions (Admin Only)</h3>
+              <p class="text-sm text-gray-600 mb-4">Please answer these predefined security questions to update an admin account.</p>
+              
+              <div class="mb-4">
+                <label class="block mb-1 font-medium text-gray-800">Question 1: What is my birthday?</label>
+                <input v-model="editUser.securityAnswers.a1" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
+              </div>
+              
+              <div class="mb-4">
+                <label class="block mb-1 font-medium text-gray-800">Question 2: Birthplace?</label>
+                <input v-model="editUser.securityAnswers.a2" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
+              </div>
+              
+              <div class="mb-4">
+                <label class="block mb-1 font-medium text-gray-800">Question 3: My first job?</label>
+                <input v-model="editUser.securityAnswers.a3" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
+              </div>
             </div>
-            <div class="mb-4">
-              <label class="block mb-1 font-medium text-gray-800">Salary</label>
-              <input v-model="editUser.salary" type="number" min="0" class="input input-bordered w-full" required />
-            </div>
+            
             <button type="submit" class="btn btn-primary w-full" :disabled="isEditing">
               <span v-if="isEditing">Saving...</span>
               <span v-else>Save Changes</span>
@@ -144,14 +154,28 @@
                 <option value="Admin">Admin</option>
               </select>
             </div>
-            <div class="mb-4">
-              <label class="block mb-1 font-medium text-gray-800">Shift Hours</label>
-              <input v-model="newUser.shift" type="text" placeholder="e.g. 9am-5pm" class="input input-bordered w-full" required />
+            
+            <!-- Security Questions for Admin Users -->
+            <div v-if="newUser.role === 'Admin'" class="border-t pt-4 mt-4">
+              <h3 class="text-lg font-semibold mb-4 text-gray-800">Security Questions (Admin Only)</h3>
+              <p class="text-sm text-gray-600 mb-4">Please answer these predefined security questions to create an admin account.</p>
+              
+              <div class="mb-4">
+                <label class="block mb-1 font-medium text-gray-800">Question 1: What is my birthday?</label>
+                <input v-model="newUser.securityAnswers.a1" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
+              </div>
+              
+              <div class="mb-4">
+                <label class="block mb-1 font-medium text-gray-800">Question 2: Birthplace?</label>
+                <input v-model="newUser.securityAnswers.a2" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
+              </div>
+              
+              <div class="mb-4">
+                <label class="block mb-1 font-medium text-gray-800">Question 3: My first job?</label>
+                <input v-model="newUser.securityAnswers.a3" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
+              </div>
             </div>
-            <div class="mb-4">
-              <label class="block mb-1 font-medium text-gray-800">Salary</label>
-              <input v-model="newUser.salary" type="number" min="0" class="input input-bordered w-full" required />
-            </div>
+            
             <button type="submit" class="btn btn-primary w-full" :disabled="isSubmitting">
               <span v-if="isSubmitting">Creating...</span>
               <span v-else>Create Account</span>
@@ -178,8 +202,11 @@ const newUser = ref({
   username: '',
   password: '',
   role: '',
-  shift: '',
-  salary: ''
+  securityAnswers: {
+    a1: '',
+    a2: '',
+    a3: ''
+  }
 });
 
 const editUser = ref({
@@ -187,8 +214,11 @@ const editUser = ref({
   fullName: '',
   username: '',
   role: '',
-  shift: '',
-  salary: ''
+  securityAnswers: {
+    a1: '',
+    a2: '',
+    a3: ''
+  }
 });
 
 const isSubmitting = ref(false);
@@ -209,8 +239,7 @@ const filteredUsers = computed(() => {
   return users.value.filter(u =>
     (u.full_name && u.full_name.toLowerCase().includes(q)) ||
     (u.username && u.username.toLowerCase().includes(q)) ||
-    (u.role && u.role.toLowerCase().includes(q)) ||
-    (u.shift && u.shift.toLowerCase().includes(q))
+    (u.role && u.role.toLowerCase().includes(q))
   );
 });
 
@@ -305,6 +334,18 @@ async function submitAddUser() {
   isSubmitting.value = true;
   formMessage.value = '';
   formError.value = '';
+  
+  // Add validation for admin users
+  if (newUser.value.role === 'Admin') {
+    if (!newUser.value.securityAnswers.a1 || !newUser.value.securityAnswers.a2 || !newUser.value.securityAnswers.a3) {
+      formError.value = 'All security questions must be answered for admin users.';
+      isSubmitting.value = false;
+      return;
+    }
+  }
+  
+  console.log('Sending user data:', newUser.value);
+  
   try {
     const response = await fetch('http://localhost:5000/api/users', {
       method: 'POST',
@@ -318,7 +359,17 @@ async function submitAddUser() {
     if (response.ok) {
       formMessage.value = 'User created successfully!';
       showAddUserModal.value = false;
-      newUser.value = { fullName: '', username: '', password: '', role: '', shift: '', salary: '' };
+      newUser.value = { 
+        fullName: '', 
+        username: '', 
+        password: '', 
+        role: '',
+        securityAnswers: {
+          a1: '',
+          a2: '',
+          a3: ''
+        }
+      };
       await fetchUsers();
     } else {
       formError.value = data.error || 'Failed to create user.';
@@ -336,8 +387,11 @@ function openEditUser(user) {
     fullName: user.full_name,
     username: user.username,
     role: user.role,
-    shift: user.shift,
-    salary: user.salary
+    securityAnswers: {
+      a1: '',
+      a2: '',
+      a3: ''
+    }
   };
   editFormMessage.value = '';
   editFormError.value = '';
@@ -348,6 +402,18 @@ async function submitEditUser() {
   isEditing.value = true;
   editFormMessage.value = '';
   editFormError.value = '';
+  
+  // Add validation for admin users
+  if (editUser.value.role === 'Admin') {
+    if (!editUser.value.securityAnswers.a1 || !editUser.value.securityAnswers.a2 || !editUser.value.securityAnswers.a3) {
+      editFormError.value = 'All security questions must be answered for admin users.';
+      isEditing.value = false;
+      return;
+    }
+  }
+  
+  console.log('Sending edit user data:', editUser.value);
+  
   try {
     const response = await fetch(`http://localhost:5000/api/users/${editUser.value.id}`, {
       method: 'PUT',
@@ -359,8 +425,7 @@ async function submitEditUser() {
         fullName: editUser.value.fullName,
         username: editUser.value.username,
         role: editUser.value.role,
-        shift: editUser.value.shift,
-        salary: editUser.value.salary
+        securityAnswers: editUser.value.role === 'Admin' ? editUser.value.securityAnswers : null
       })
     });
     const data = await response.json();

@@ -1,22 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Navbar -->
-    <nav class="flex items-center justify-between bg-white px-6 py-3 shadow-sm">
-      <div class="flex items-center">
-        <span class="w-8 h-8 bg-gray-200 rounded-full mr-3"></span>
-        <span class="text-xl font-semibold text-gray-800">Admin</span>
-      </div>
-      <div class="flex-1 flex justify-end items-center">
-        <div class="flex items-center space-x-6">
-          <a @click.prevent="goToDashboard" class="text-gray-700 hover:underline cursor-pointer">Dashboard</a>
-          <a @click.prevent="showCalendar = true" class="text-gray-700 hover:underline cursor-pointer">Calendar</a>
-          <span class="text-gray-700 font-semibold">Inventory Management/Order History</span>
-          <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Sales Report</a>
-          <a @click.prevent="goToManageUsers" class="text-gray-700 hover:underline cursor-pointer">Manage users</a>
-          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
-        </div>
-      </div>
-    </nav>
+    <AdminNavbar @show-calendar="showCalendar = true" />
 
     <!-- Calendar Popup -->
     <div v-if="showCalendar" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showCalendar = false">
@@ -206,6 +190,7 @@ import { useRouter } from 'vue-router';
 import CalendarPopup from '../components/CalendarPopup.vue';
 import { useOrders } from '../composables/useOrders';
 import { useAuth } from '../composables/useAuth';
+import AdminNavbar from '../components/AdminNavbar.vue';
 
 const router = useRouter();
 const showCalendar = ref(false);

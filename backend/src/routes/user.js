@@ -1,5 +1,5 @@
 const express = require('express');
-const { registerUser, getUsers, removeUser, editUser, loginUser, requestPasswordReset, resetPassword, verifyResetToken } = require('../controllers/userController');
+const { registerUser, getUsers, removeUser, editUser, loginUser, getAdminSecurityQuestions, resetAdminPassword } = require('../controllers/userController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { activityLoggers } = require('../middleware/activityLogger');
 
@@ -25,9 +25,10 @@ router.post('/logout', activityLoggers.logout, (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Password reset routes (Public endpoints)
-router.post('/forgot-password', requestPasswordReset);
-router.post('/reset-password', resetPassword);
-router.get('/verify-reset-token/:token', verifyResetToken);
+// GET /api/users/security-questions/:username - Get security questions for admin (Public endpoint for password recovery)
+router.get('/security-questions/:username', getAdminSecurityQuestions);
+
+// POST /api/users/reset-admin-password - Reset admin password using security questions (Public endpoint)
+router.post('/reset-admin-password', resetAdminPassword);
 
 module.exports = router; 
