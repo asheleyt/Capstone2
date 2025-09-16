@@ -65,10 +65,10 @@
               </tbody>
             </table>
             <div class="flex justify-between text-xs mt-2 gap-2">
-              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cash sale<br><span class="font-semibold">₱1075.00</span></div>
-              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cashless sale<br><span class="font-semibold">₱610.00</span></div>
-              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Discount<br><span class="font-semibold">₱30.00</span></div>
-              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Sale<br><span class="font-semibold">₱1715.00</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cash sale<br><span class="font-semibold">₱{{ cashSales.toFixed(2) }}</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Cashless sale<br><span class="font-semibold">₱{{ cashlessSales.toFixed(2) }}</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Discount<br><span class="font-semibold">₱{{ totalDiscount.toFixed(2) }}</span></div>
+              <div class="bg-gray-100 rounded p-2 flex-1 border text-gray-800">Total Sale<br><span class="font-semibold">₱{{ todayRevenue.toFixed(2) }}</span></div>
             </div>
           </div>
           <!-- Inventory Alerts -->
@@ -110,14 +110,36 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import LineChart from '../components/LineChart.vue';
 import CalendarPopup from '../components/CalendarPopup.vue';
-import { useOrders } from '../composables/useOrders';
 import { useAuth } from '../composables/useAuth';
 import AdminNavbar from '../components/AdminNavbar.vue';
 
 const router = useRouter();
 const selectedType = ref('Daily');
 const showCalendar = ref(false);
-const { completedOrders, todayRevenue } = useOrders();
+
+// Order data from backend
+const orders = ref([]);
+const ordersLoading = ref(false);
+const ordersError = ref('');
+
+// --- Order data: Fetch orders from backend ---
+const { getAuthHeaders } = useAuth();
+
+async function fetchOrders() {
+  ordersLoading.value = true;
+  ordersError.value = '';
+  try {
+    const res = await fetch('http://localhost:5000/api/orders', {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to fetch orders');
+    orders.value = await res.json();
+  } catch (e) {
+    ordersError.value = e.message;
+  } finally {
+    ordersLoading.value = false;
+  }
+}
 
 // --- Inventory Alerts: Fetch inventory from backend ---
 const inventory = ref([]);
@@ -129,10 +151,7 @@ async function fetchInventory() {
   inventoryError.value = '';
   try {
     const res = await fetch('http://localhost:5000/api/inventory', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      }
+      headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch inventory');
     inventory.value = await res.json();
@@ -142,7 +161,11 @@ async function fetchInventory() {
     inventoryLoading.value = false;
   }
 }
-onMounted(fetchInventory);
+
+onMounted(() => {
+  fetchOrders();
+  fetchInventory();
+});
 
 function isLowStock(item) {
   const total = item.batches.reduce((sum, b) => sum + b.quantity, 0);
@@ -225,28 +248,75 @@ const topSelling = [
 // Generate sales summary from actual order data
 const saleSummary = computed(() => {
   const today = new Date().toISOString().split('T')[0];
-  const todayOrders = completedOrders.value.filter(order => order.date === today);
+  const todayOrders = orders.value.filter(order => {
+    const orderDate = new Date(order.created_at).toISOString().split('T')[0];
+    return orderDate === today && order.status === 'completed';
+  });
   
   // Group items by name and sum quantities
   const itemMap = new Map();
   
   todayOrders.forEach(order => {
-    order.items.forEach(item => {
-      if (itemMap.has(item.name)) {
-        itemMap.get(item.name).qty += item.quantity;
-        itemMap.get(item.name).total += item.price * item.quantity;
-      } else {
-        itemMap.set(item.name, {
-          item: item.name,
-          qty: item.quantity,
-          price: item.price,
-          total: item.price * item.quantity
-        });
-      }
-    });
+    if (order.items && Array.isArray(order.items)) {
+      order.items.forEach(item => {
+        if (itemMap.has(item.product_name)) {
+          itemMap.get(item.product_name).qty += item.quantity;
+          itemMap.get(item.product_name).total += parseFloat(item.total_price);
+        } else {
+          itemMap.set(item.product_name, {
+            item: item.product_name,
+            qty: item.quantity,
+            price: parseFloat(item.unit_price),
+            total: parseFloat(item.total_price)
+          });
+        }
+      });
+    }
   });
   
   return Array.from(itemMap.values()).slice(0, 7); // Show top 7 items
+});
+
+// Calculate today's revenue from real orders
+const todayRevenue = computed(() => {
+  const today = new Date().toISOString().split('T')[0];
+  return orders.value
+    .filter(order => {
+      const orderDate = new Date(order.created_at).toISOString().split('T')[0];
+      return orderDate === today && order.status === 'completed';
+    })
+    .reduce((sum, order) => sum + parseFloat(order.total), 0);
+});
+
+// Calculate cash vs cashless sales
+const cashSales = computed(() => {
+  const today = new Date().toISOString().split('T')[0];
+  return orders.value
+    .filter(order => {
+      const orderDate = new Date(order.created_at).toISOString().split('T')[0];
+      return orderDate === today && order.status === 'completed' && order.payment_method === 'Cash';
+    })
+    .reduce((sum, order) => sum + parseFloat(order.total), 0);
+});
+
+const cashlessSales = computed(() => {
+  const today = new Date().toISOString().split('T')[0];
+  return orders.value
+    .filter(order => {
+      const orderDate = new Date(order.created_at).toISOString().split('T')[0];
+      return orderDate === today && order.status === 'completed' && order.payment_method !== 'Cash';
+    })
+    .reduce((sum, order) => sum + parseFloat(order.total), 0);
+});
+
+const totalDiscount = computed(() => {
+  const today = new Date().toISOString().split('T')[0];
+  return orders.value
+    .filter(order => {
+      const orderDate = new Date(order.created_at).toISOString().split('T')[0];
+      return orderDate === today && order.status === 'completed';
+    })
+    .reduce((sum, order) => sum + parseFloat(order.discount || 0), 0);
 });
 
 const { logout } = useAuth();

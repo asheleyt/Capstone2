@@ -4,9 +4,12 @@
     <aside class="w-56 bg-gray-200 flex flex-col justify-between py-6 px-4">
       <div>
         <nav>
-          <button class="flex items-center space-x-2 mb-4 text-black hover:underline">
+          <button 
+            class="flex items-center space-x-2 mb-4 text-black hover:underline" 
+            @click="toggleOrderHistory"
+          >
             <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
-            <span>Order History</span>
+            <span>{{ showOrderHistory ? 'Hide' : 'Show' }} Order History</span>
           </button>
         </nav>
       </div>
@@ -30,7 +33,7 @@
           />
         </div>
         <div class="flex space-x-3 items-center">
-          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
+          <button @click="handleLogout" class="btn ml-4">Logout</button>
         </div>
       </header>
 
@@ -110,7 +113,7 @@
         <div class="col-span-4 bg-white rounded-lg shadow p-6 flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-2xl font-bold text-gray-800">Current Order</h2>
-            <button class="btn">Add-On</button>
+            <button @click="setOrderType('take-out')" :class="['btn', orderType === 'take-out' ? 'btn-primary' : '']">Take out</button>
           </div>
           
           <!-- Cart Items -->
@@ -132,6 +135,42 @@
             </div>
             <div v-if="cart.length === 0" class="text-center text-gray-500 py-8">
               No items in cart
+            </div>
+          </div>
+
+          <!-- Order Notes & Table Number -->
+          <div class="mb-4 flex flex-col gap-2">
+            <div class="flex items-center justify-between mb-1">
+              <div class="text-xs font-semibold text-gray-800">ORDER NOTES</div>
+              <div v-if="orderNotes.trim()" class="flex items-center space-x-1">
+                <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span class="text-xs text-blue-600 font-medium">Has notes</span>
+              </div>
+            </div>
+            <textarea 
+              v-model="orderNotes" 
+              placeholder="Add special instructions, allergies, or cooking preferences..."
+              class="w-full p-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
+              rows="2"
+              maxlength="200"
+            ></textarea>
+            <div class="flex justify-between items-center mt-1">
+              <span class="text-xs text-gray-500">Special instructions for kitchen staff</span>
+              <div class="flex items-center space-x-2">
+                <button 
+                  v-if="orderNotes.trim()" 
+                  @click="orderNotes = ''" 
+                  class="text-xs text-red-500 hover:text-red-700 underline"
+                >
+                  Clear notes
+                </button>
+                <span class="text-xs text-gray-400">{{ orderNotes.length }}/200</span>
+              </div>
+            </div>
+            <!-- Table Number Input (only for dine-in) -->
+            <div v-if="orderType === 'dine-in'" class="flex items-center gap-2 mt-2">
+              <label class="text-xs font-semibold text-gray-800" for="tableNumber">Table #</label>
+              <input id="tableNumber" v-model="tableNumber" type="text" placeholder="Enter table number" class="input input-bordered input-sm w-24 text-xs" />
             </div>
           </div>
 
@@ -194,13 +233,103 @@
         </div>
       </div>
     </div>
+
+    <!-- Collapsible Order History Panel -->
+    <div 
+      v-if="showOrderHistory" 
+      class="fixed left-0 top-0 h-full w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-50"
+      :class="showOrderHistory ? 'translate-x-0' : '-translate-x-full'"
+    >
+      <div class="flex items-center justify-between p-4 border-b">
+        <h3 class="text-lg font-semibold text-gray-800">Order History</h3>
+        <button @click="toggleOrderHistory" class="text-gray-500 hover:text-gray-700">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="p-4 overflow-y-auto h-full">
+        <div v-if="orderHistoryLoading" class="text-center py-8">
+          <div class="loading loading-spinner loading-md"></div>
+          <p class="mt-2 text-gray-600">Loading orders...</p>
+        </div>
+        
+        <div v-else-if="orderHistoryError" class="text-center py-8">
+          <div class="text-red-500 text-xl mb-2">⚠️</div>
+          <p class="text-red-600">{{ orderHistoryError }}</p>
+          <button @click="fetchOrderHistory" class="btn btn-primary mt-4">Retry</button>
+        </div>
+        
+        <div v-else-if="orderHistory.length === 0" class="text-center py-8">
+          <div class="text-gray-400 text-xl mb-2">📋</div>
+          <p class="text-gray-600">No orders yet</p>
+        </div>
+        
+        <div v-else class="space-y-3">
+          <div 
+            v-for="order in orderHistory" 
+            :key="order.id" 
+            class="bg-gray-50 rounded-lg p-3 border-l-4"
+            :class="{
+              'border-blue-500': order.status === 'pending',
+              'border-yellow-500': order.status === 'preparing',
+              'border-green-500': order.status === 'ready',
+              'border-gray-500': order.status === 'completed',
+              'border-red-500': order.status === 'cancelled'
+            }"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-semibold text-gray-800">#{{ order.order_number }}</span>
+              <span 
+                class="px-2 py-1 rounded-full text-xs font-medium"
+                :class="{
+                  'bg-blue-100 text-blue-800': order.status === 'pending',
+                  'bg-yellow-100 text-yellow-800': order.status === 'preparing',
+                  'bg-green-100 text-green-800': order.status === 'ready',
+                  'bg-gray-100 text-gray-800': order.status === 'completed',
+                  'bg-red-100 text-red-800': order.status === 'cancelled'
+                }"
+              >
+                {{ order.status }}
+              </span>
+            </div>
+            
+            <div class="text-sm text-gray-600 mb-2">
+              <div class="flex items-center space-x-2">
+                <span>{{ order.order_type }}</span>
+                <span v-if="order.table_number">• Table {{ order.table_number }}</span>
+                <span>• {{ order.payment_method }}</span>
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                {{ new Date(order.created_at).toLocaleString() }}
+              </div>
+            </div>
+            
+            <div class="space-y-1 mb-2">
+              <div v-for="item in order.items" :key="item.id" class="text-sm">
+                <span class="text-gray-800">{{ item.quantity }}x {{ item.product_name }}</span>
+                <span class="text-gray-600 ml-2">₱{{ item.total_price }}</span>
+              </div>
+            </div>
+            
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-gray-800">₱{{ order.total }}</span>
+            </div>
+            
+            <div v-if="order.notes" class="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
+              <strong>Notes:</strong> {{ order.notes }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuth } from '../composables/useAuth';
 
 const router = useRouter();
 const products = ref([]);
@@ -249,9 +378,7 @@ async function fetchProducts() {
   loading.value = true;
   error.value = '';
   try {
-    const res = await fetch('http://localhost:5000/api/inventory/pos', {
-      headers: getAuthHeaders()
-    });
+    const res = await fetch('http://localhost:5000/api/inventory/pos');
     if (!res.ok) throw new Error('Failed to fetch products');
     const data = await res.json();
     console.log('Fetched products:', data); // Debug log
@@ -336,19 +463,71 @@ function updateQuantity(itemId, change) {
 function clearCart() {
   cart.value = [];
   totalAmountReceived.value = 0;
+  orderNotes.value = '';
+  tableNumber.value = '';
 }
 
 function setOrderType(type) {
   orderType.value = type;
+  if (type === 'take-out') tableNumber.value = '';
 }
 
-function checkout() {
+function addNoteTemplate(template) {
+  if (orderNotes.value.trim()) {
+    // If there are already notes, add the template with a separator
+    orderNotes.value += `, ${template}`;
+  } else {
+    // If no notes yet, just add the template
+    orderNotes.value = template;
+  }
+}
+
+async function checkout() {
   if (cart.value.length === 0) return;
-  
-  // Here you would implement the actual checkout logic
-  // For now, just show an alert
-  alert('Order placed successfully!');
-  clearCart();
+  if (orderType.value === 'dine-in' && !tableNumber.value.trim()) {
+    alert('Please enter a table number for dine-in orders.');
+    return;
+  }
+  // Create order object with notes and table number
+  const order = {
+    items: cart.value,
+    paymentMethod: selectedPaymentMethod.value,
+    orderType: orderType.value,
+    tableNumber: orderType.value === 'dine-in' ? tableNumber.value.trim() : '',
+    notes: orderNotes.value.trim(),
+    subtotal: subtotal.value,
+    total: total.value,
+    amountReceived: totalAmountReceived.value,
+    changeAmount: change.value
+  };
+  try {
+    const response = await fetch('http://localhost:5000/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(order)
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create order');
+    }
+    const result = await response.json();
+    console.log('Order created:', result);
+    // Show success message with order number, table, and notes
+    const tableText = order.tableNumber ? `\nTable: ${order.tableNumber}` : '';
+    const notesText = order.notes ? `\nNotes: ${order.notes}` : '';
+    alert(`Order #${result.order_number} placed successfully!${tableText}${notesText}`);
+    clearCart();
+    tableNumber.value = '';
+    
+    // Refresh order history if it's open
+    if (showOrderHistory.value) {
+      await fetchOrderHistory();
+    }
+  } catch (error) {
+    console.error('Error creating order:', error);
+    alert('Failed to place order. Please try again.');
+  }
 }
 
 // Computed properties
@@ -368,9 +547,9 @@ const change = computed(() => {
   return totalAmountReceived.value - total.value;
 });
 
-const { logout, getAuthHeaders } = useAuth();
-async function handleLogout() {
-  await logout();
+function handleLogout() {
+  localStorage.removeItem('user');
+  router.push('/login');
 }
 
 function goToOrderHistory() {
@@ -381,9 +560,7 @@ async function fetchOrderHistory() {
   orderHistoryLoading.value = true;
   orderHistoryError.value = '';
   try {
-    const res = await fetch('http://localhost:5000/api/orders', {
-      headers: getAuthHeaders()
-    });
+    const res = await fetch('http://localhost:5000/api/orders');
     if (!res.ok) throw new Error('Failed to fetch orders');
     const data = await res.json();
     orderHistory.value = data;
