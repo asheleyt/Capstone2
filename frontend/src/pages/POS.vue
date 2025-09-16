@@ -501,15 +501,19 @@ async function checkout() {
     changeAmount: change.value
   };
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch('http://localhost:5000/api/orders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(order)
     });
     if (!response.ok) {
-      throw new Error('Failed to create order');
+      const errorText = await response.text();
+      console.error('Order creation failed:', errorText);
+      throw new Error('Failed to create order: ' + errorText);
     }
     const result = await response.json();
     console.log('Order created:', result);

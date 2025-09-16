@@ -8,6 +8,7 @@ const {
   getBatchesByItemId,
   discardBatch,
   getProductsForPOS,
+  findInventoryItemByNameAndType,
 } = require('../models/inventory');
 
 // Get all inventory items with their batches
@@ -30,8 +31,15 @@ async function getInventory(req, res) {
 // Add a new inventory item
 async function addInventoryItem(req, res) {
   try {
-    const { name, type, lowStockThreshold, requiresRawMaterials, rawMaterials } = req.body;
-    const item = await createInventoryItem({ name, type, lowStockThreshold, requiresRawMaterials, rawMaterials });
+    const { name, type, unit, category, lowStockThreshold, requiresRawMaterials, rawMaterials } = req.body;
+
+    // If this is a raw material/product that already exists by name+type, reuse it
+    const existing = await findInventoryItemByNameAndType(name, type);
+    if (existing) {
+      return res.status(200).json(existing);
+    }
+
+    const item = await createInventoryItem({ name, type, unit, category, lowStockThreshold, requiresRawMaterials, rawMaterials });
     res.status(201).json(item);
   } catch (err) {
     res.status(500).json({ error: 'Failed to add item', details: err.message });
@@ -63,8 +71,8 @@ async function deleteInventoryItemHandler(req, res) {
 // Add a batch to an item
 async function addBatchHandler(req, res) {
   try {
-    const { itemId, quantity, expiry } = req.body;
-    const batch = await addBatch({ itemId, quantity, expiry });
+    const { itemId, quantity, expiry, unitAmount, unitLabel } = req.body;
+    const batch = await addBatch({ itemId, quantity, expiry, unitAmount, unitLabel });
     res.status(201).json(batch);
   } catch (err) {
     res.status(500).json({ error: 'Failed to add batch', details: err.message });

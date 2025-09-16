@@ -17,6 +17,15 @@
         <h2 class="text-xl font-bold mb-4">Add Raw Material</h2>
         <form @submit.prevent="submitRawMaterial">
           <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Add to Existing Raw Material</label>
+            <select v-model="rawForm.existingItemId" class="select select-bordered w-full">
+              <option value="">-- Create New --</option>
+              <option v-for="raw in inventory.filter(i => i.type === 'raw')" :key="raw.id" :value="raw.id">
+                {{ raw.name }} ({{ raw.unit || 'unit' }})
+              </option>
+            </select>
+          </div>
+          <div class="mb-3" v-if="!rawForm.existingItemId">
             <label class="block text-sm font-semibold mb-1">Name</label>
             <input v-model="rawForm.name" class="input input-bordered w-full" required />
           </div>
@@ -29,14 +38,52 @@
             <input v-model="rawForm.expiry" type="date" class="input input-bordered w-full" required />
           </div>
           <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Specific Unit Amount</label>
+            <div class="flex gap-2">
+              <input v-model.number="rawForm.unitAmount" type="number" min="0" step="0.01" class="input input-bordered w-full" placeholder="e.g., 2" />
+              <select v-model="rawForm.unitLabel" class="select select-bordered w-28">
+                <option value="">{{ currentUnitLabel || 'unit' }}</option>
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="ml">ml</option>
+                <option value="L">L</option>
+                <option value="pcs">pcs</option>
+              </select>
+            </div>
+            <span class="text-xs text-gray-500">Optional. Example result: Unit: 2 kg</span>
+          </div>
+          <div class="mb-3">
             <label class="block text-sm font-semibold mb-1">Low Stock Alert Level
               <span class="block text-xs text-gray-500">Show a warning when quantity is at or below this number.</span>
             </label>
             <input v-model.number="rawForm.lowStockThreshold" type="number" min="1" class="input input-bordered w-full" required />
           </div>
+          <div class="mb-3" v-if="!rawForm.existingItemId">
+            <label class="block text-sm font-semibold mb-1">Measurement Unit</label>
+            <select v-model="rawForm.unit" class="select select-bordered w-full" required>
+              <option value="" disabled>Select unit</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="ml">ml</option>
+              <option value="L">L</option>
+              <option value="pcs">pcs</option>
+            </select>
+          </div>
+          <div class="mb-3" v-if="!rawForm.existingItemId">
+            <label class="block text-sm font-semibold mb-1">Category</label>
+            <select v-model="rawForm.category" class="select select-bordered w-full" required>
+              <option value="" disabled>Select category</option>
+              <option value="Spices">Spices</option>
+              <option value="Meat">Meat</option>
+              <option value="Vegetables">Vegetables</option>
+              <option value="Baking">Baking</option>
+              <option value="Dairy">Dairy</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
           <div v-if="addError" class="text-red-500 text-sm mb-2">{{ addError }}</div>
           <button type="submit" class="btn btn-primary w-full" :disabled="addLoading">
-            {{ addLoading ? 'Adding...' : 'Add Raw Material' }}
+            {{ addLoading ? 'Adding...' : (rawForm.existingItemId ? 'Add Batch' : 'Add Raw Material') }}
           </button>
         </form>
       </div>
@@ -114,6 +161,51 @@
       </div>
     </div>
 
+    <!-- Add Edit Raw Material Modal -->
+    <div v-if="showEditRawModal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
+        <button class="absolute top-2 right-2 text-gray-400 hover:text-black" @click="showEditRawModal = false">&times;</button>
+        <h2 class="text-xl font-bold mb-4">Edit Raw Material</h2>
+        <form @submit.prevent="submitEditRawMaterial">
+          <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Name</label>
+            <input v-model="editRawForm.name" class="input input-bordered w-full" required />
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Measurement Unit</label>
+            <select v-model="editRawForm.unit" class="select select-bordered w-full" required>
+              <option value="" disabled>Select unit</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="ml">ml</option>
+              <option value="L">L</option>
+              <option value="pcs">pcs</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Category</label>
+            <select v-model="editRawForm.category" class="select select-bordered w-full" required>
+              <option value="" disabled>Select category</option>
+              <option value="Spices">Spices</option>
+              <option value="Meat">Meat</option>
+              <option value="Vegetables">Vegetables</option>
+              <option value="Baking">Baking</option>
+              <option value="Dairy">Dairy</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Low Stock Alert Level</label>
+            <input v-model.number="editRawForm.lowStockThreshold" type="number" min="1" class="input input-bordered w-full" required />
+          </div>
+          <div v-if="addError" class="text-red-500 text-sm mb-2">{{ addError }}</div>
+          <button type="submit" class="btn btn-primary w-full" :disabled="addLoading">
+            {{ addLoading ? 'Saving...' : 'Save Changes' }}
+          </button>
+        </form>
+      </div>
+    </div>
+
     <!-- Main Content -->
     <div class="p-6 grid grid-cols-12 gap-6">
       <!-- Order History (Left) -->
@@ -153,10 +245,14 @@
             <div class="flex justify-between items-center mb-2">
               <div class="font-semibold text-gray-800">{{ item.name }}</div>
               <span v-if="isLowStock(item)" class="text-xs text-red-600 font-bold ml-2">Low Stock!</span>
-              <button class="btn btn-link btn-xs" @click="openEditModal(item)">Edit</button>
+              <button v-if="item.type === 'raw'" class="btn btn-link btn-xs" @click="openEditRawModal(item)">Edit</button>
               <button class="btn btn-link btn-xs btn-error" @click="discardItem(item.id)">Discard</button>
             </div>
-            <div class="text-xs text-gray-700 mb-2">Type: {{ item.type === 'raw' ? 'Raw Material' : (item.type === 'Product' ? 'Product' : 'Product') }}</div>
+            <div class="text-xs text-gray-700 mb-2">
+              Type: {{ item.type === 'raw' ? 'Raw Material' : (item.type === 'Product' ? 'Product' : 'Product') }}
+              <span v-if="item.unit">| Unit: {{ item.unit }}</span>
+              <span v-if="item.category">| Category: {{ item.category }}</span>
+            </div>
             <div class="flex-1">
               <div v-for="batch in item.batches" :key="batch.id" class="mb-2 p-2 rounded border bg-white">
                 <div class="flex justify-between items-center">
@@ -167,7 +263,8 @@
                   </div>
                   <button class="btn btn-link btn-xs btn-error" @click="discardBatch(item.id, batch.id)">Discard</button>
                 </div>
-                <div>Qty: <span class="font-semibold">{{ batch.quantity }}</span></div>
+                <div>Qty: <span class="font-semibold">{{ batch.quantity }}<span v-if="item.unit"> {{ item.unit }}</span></span></div>
+                <div v-if="batch.unit_amount || batch.unit_label">Unit: <span class="font-semibold">{{ batch.unit_amount || '' }} <span>{{ batch.unit_label || '' }}</span></span></div>
                 <div>Expiry: <span>{{ batch.expiry }}</span></div>
               </div>
             </div>
@@ -216,10 +313,15 @@ const editError = ref('');
 
 // --- Raw Material Form ---
 const rawForm = ref({
+  existingItemId: '',
   name: '',
   quantity: 1,
   expiry: '',
+  unitAmount: null,
+  unitLabel: '',
   lowStockThreshold: 1,
+  unit: '',
+  category: '',
 });
 
 // --- Product Form ---
@@ -231,6 +333,45 @@ const productForm = ref({
   price: 0,
   rawMaterials: [], // [{ name, quantity }]
 });
+
+// --- Add/Edit Raw Material Modal logic (add after editBatchForm and editItem)
+const editRawForm = ref({ name: '', unit: '', category: '', lowStockThreshold: 1 });
+const showEditRawModal = ref(false);
+function openEditRawModal(item) {
+  editItem.value = item;
+  editRawForm.value = {
+    name: item.name,
+    unit: item.unit || '',
+    category: item.category || '',
+    lowStockThreshold: item.low_stock_threshold || 1,
+  };
+  showEditRawModal.value = true;
+}
+async function submitEditRawMaterial() {
+  addLoading.value = true;
+  addError.value = '';
+  try {
+    if (!editRawForm.value.name) throw new Error('Name is required');
+    if (!editRawForm.value.unit) throw new Error('Measurement unit is required');
+    if (!editRawForm.value.category) throw new Error('Category is required');
+    await fetch(`http://localhost:5000/api/inventory/${editItem.value.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      body: JSON.stringify({
+        name: editRawForm.value.name,
+        unit: editRawForm.value.unit,
+        category: editRawForm.value.category,
+        lowStockThreshold: editRawForm.value.lowStockThreshold,
+      }),
+    });
+    showEditRawModal.value = false;
+    await fetchInventory();
+  } catch (e) {
+    addError.value = e.message;
+  } finally {
+    addLoading.value = false;
+  }
+}
 
 // --- Fetch inventory from backend ---
 async function fetchInventory() {
@@ -278,39 +419,61 @@ function soonToExpire(batch) {
 
 // --- Add Raw Material ---
 function openRawModal() {
-  rawForm.value = { name: '', quantity: 1, expiry: '', lowStockThreshold: 1 };
+  rawForm.value = { existingItemId: '', name: '', quantity: 1, expiry: '', unitAmount: null, unitLabel: '', lowStockThreshold: 1, unit: '', category: '' };
   addError.value = '';
   showRawModal.value = true;
 }
+const currentUnitLabel = computed(() => {
+  if (rawForm.value.unitLabel) return rawForm.value.unitLabel;
+  if (rawForm.value.existingItemId) {
+    const found = inventory.value.find(i => i.id === Number(rawForm.value.existingItemId));
+    return found?.unit || '';
+  }
+  return rawForm.value.unit || '';
+});
 async function submitRawMaterial() {
   addLoading.value = true;
   addError.value = '';
   try {
-    if (!rawForm.value.name) throw new Error('Name is required');
     if (!rawForm.value.expiry) throw new Error('Expiry date is required');
     if (rawForm.value.quantity < 1) throw new Error('Quantity must be at least 1');
-    // 1. Create item
-    const res = await fetch('http://localhost:5000/api/inventory', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      body: JSON.stringify({
-        name: rawForm.value.name,
-        type: 'raw',
-        lowStockThreshold: rawForm.value.lowStockThreshold,
-        requiresRawMaterials: false,
-        rawMaterials: [],
-      }),
-    });
-    if (!res.ok) throw new Error('Failed to add raw material');
-    const item = await res.json();
-    // 2. Add batch
+
+    let itemId = rawForm.value.existingItemId;
+
+    // If creating new, create or reuse by name via backend
+    if (!itemId) {
+      if (!rawForm.value.name) throw new Error('Name is required');
+      if (!rawForm.value.unit) throw new Error('Measurement unit is required');
+      if (!rawForm.value.category) throw new Error('Category is required');
+
+      const res = await fetch('http://localhost:5000/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({
+          name: rawForm.value.name,
+          type: 'raw',
+          unit: rawForm.value.unit,
+          category: rawForm.value.category,
+          lowStockThreshold: rawForm.value.lowStockThreshold,
+          requiresRawMaterials: false,
+          rawMaterials: [],
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to add raw material');
+      const item = await res.json();
+      itemId = item.id;
+    }
+
+    // Add batch to selected or newly created item
     const batchRes = await fetch('http://localhost:5000/api/inventory/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({
-        itemId: item.id,
+        itemId,
         quantity: rawForm.value.quantity,
         expiry: rawForm.value.expiry,
+        unitAmount: rawForm.value.unitAmount,
+        unitLabel: rawForm.value.unitLabel || currentUnitLabel.value,
       }),
     });
     if (!batchRes.ok) throw new Error('Failed to add batch');
@@ -413,141 +576,4 @@ async function submitEditBatch() {
 async function discardBatch(itemId, batchId) {
   // Always confirm before discarding
   if (confirm('Are you sure you want to discard this batch?')) {
-    await fetch(`http://localhost:5000/api/inventory/batch/${batchId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-    await fetchInventory();
-  }
-}
-async function discardItem(itemId) {
-  if (confirm('Are you sure you want to discard this entire item and all its batches?')) {
-    await fetch(`http://localhost:5000/api/inventory/${itemId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-    await fetchInventory();
-  }
-}
-
-function goToDashboard() {
-  router.push('/admin/dashboard');
-}
-function goToManageUsers() {
-  router.push('/admin/manage-users');
-}
-const { logout } = useAuth();
-async function handleLogout() {
-  await logout();
-}
-
-async function downloadSalesReport() {
-  try {
-    // Show loading state
-    const link = document.querySelector('a[onclick*="downloadSalesReport"]');
-    if (link) {
-      link.textContent = 'Generating...';
-      link.style.pointerEvents = 'none';
-    }
-
-    // Make API call to download Excel file
-    const response = await fetch('http://localhost:5000/api/sales/report?reportType=detailed', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to generate report');
-    }
-
-    // Get the blob from the response
-    const blob = await response.blob();
-    
-    // Create a download link
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sales_report_${new Date().toISOString().split('T')[0]}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-
-    // Reset button text
-    if (link) {
-      link.textContent = 'Download Sales Report';
-      link.style.pointerEvents = 'auto';
-    }
-
-  } catch (error) {
-    console.error('Error downloading sales report:', error);
-    alert('Failed to download sales report. Please try again.');
-    
-    // Reset button text on error
-    const link = document.querySelector('a[onclick*="downloadSalesReport"]');
-    if (link) {
-      link.textContent = 'Download Sales Report';
-      link.style.pointerEvents = 'auto';
-    }
-  }
-}
-
-// Use shared order data instead of local mock data
-const orders = computed(() => {
-  return completedOrders.value.map(order => ({
-    id: order.id,
-    number: order.number,
-    date: order.date,
-    amount: order.total
-  }));
-});
-</script> 
-
-<style scoped>
-/* Improve font contrast for inventory management */
-.text-gray-400, .text-gray-500, .text-gray-300 {
-  color: #374151 !important;
-  opacity: 1 !important;
-}
-.text-xs, .text-sm, .text-gray-700, .text-gray-600 {
-  color: #1e293b !important;
-  opacity: 1 !important;
-}
-.font-semibold, .font-bold {
-  color: #1e293b !important;
-  font-weight: 700 !important;
-}
-.bg-white .text-xs, .bg-white .text-gray-700, .bg-white .text-gray-600 {
-  color: #1e293b !important;
-  opacity: 1 !important;
-}
-/* Batch info (Qty, Expiry) */
-.bg-white div, .bg-white span {
-  color: #1e293b !important;
-  opacity: 1 !important;
-}
-/* Add Raw Material and Add Product buttons */
-.btn.btn-outline {
-  color: #1e293b !important;
-  border-color: #6366f1 !important;
-  background: #e0e7ff !important;
-  font-weight: 700 !important;
-}
-.btn.btn-outline:disabled, .btn.btn-outline[disabled] {
-  color: #6b7280 !important;
-  background: #f3f4f6 !important;
-  border-color: #d1d5db !important;
-  opacity: 1 !important;
-}
-/* Fix input text color and background for better contrast */
-.input, .input.input-bordered {
-  color: #1e293b !important;
-  background: #fff !important;
-  border-color: #d1d5db !important;
-}
-/* Fix input and select text color and background for better contrast in modals */
-.input, .input.input-bordered, .select, .select.select-bordered {
-  color: #1e293b !important;
-  background: #fff !important;
-  border-color: #d1d5db !important;
-}
-</style> 
+    await fetch(`

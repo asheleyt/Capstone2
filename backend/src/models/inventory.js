@@ -9,6 +9,8 @@ async function initInventoryTables() {
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         type VARCHAR(50) NOT NULL,
+        unit VARCHAR(20),
+        category VARCHAR(50),
         low_stock_threshold INTEGER DEFAULT 10,
         requires_raw_materials BOOLEAN DEFAULT FALSE,
         raw_materials JSONB DEFAULT '[]',
@@ -25,6 +27,20 @@ async function initInventoryTables() {
       console.log('Price column already exists in inventory_items table');
     }
 
+    // Add unit and category columns if they don't exist (migration)
+    try {
+      await pool.query('ALTER TABLE inventory_items ADD COLUMN unit VARCHAR(20)');
+      console.log('Unit column added to inventory_items table');
+    } catch (error) {
+      console.log('Unit column already exists in inventory_items table');
+    }
+    try {
+      await pool.query('ALTER TABLE inventory_items ADD COLUMN category VARCHAR(50)');
+      console.log('Category column added to inventory_items table');
+    } catch (error) {
+      console.log('Category column already exists in inventory_items table');
+    }
+
     // Create inventory_batches table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS inventory_batches (
@@ -32,6 +48,8 @@ async function initInventoryTables() {
         item_id INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
         quantity INTEGER NOT NULL,
         expiry DATE NOT NULL,
+        unit_amount NUMERIC(10,2),
+        unit_label VARCHAR(20),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -44,13 +62,21 @@ async function initInventoryTables() {
 }
 
 // INVENTORY ITEM CRUD
-async function createInventoryItem({ name, type, lowStockThreshold, requiresRawMaterials, rawMaterials, price }) {
+async function createInventoryItem({ name, type, unit, category, lowStockThreshold, requiresRawMaterials, rawMaterials, price }) {
   const result = await pool.query(
-    `INSERT INTO inventory_items (name, type, low_stock_threshold, requires_raw_materials, raw_materials, price)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [name, type, lowStockThreshold, requiresRawMaterials, JSON.stringify(rawMaterials || []), price || 0]
+    `INSERT INTO inventory_items (name, type, unit, category, low_stock_threshold, requires_raw_materials, raw_materials, price)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [name, type, unit, category, lowStockThreshold, requiresRawMaterials, JSON.stringify(rawMaterials || []), price || 0]
   );
   return result.rows[0];
+}
+
+async function findInventoryItemByNameAndType(name, type) {
+  const result = await pool.query(
+    `SELECT * FROM inventory_items WHERE LOWER(name) = LOWER($1) AND type = $2 LIMIT 1`,
+    [name, type]
+  );
+  return result.rows[0] || null;
 }
 
 async function getAllInventoryItems() {
@@ -83,9 +109,9 @@ async function deleteInventoryItem(id) {
 // BATCH CRUD
 async function addBatch({ itemId, quantity, expiry }) {
   const result = await pool.query(
-    `INSERT INTO inventory_batches (item_id, quantity, expiry)
-     VALUES ($1, $2, $3) RETURNING *`,
-    [itemId, quantity, expiry]
+    `INSERT INTO inventory_batches (item_id, quantity, expiry, unit_amount, unit_label)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [itemId, quantity, expiry, null, null]
   );
   return result.rows[0];
 }
@@ -205,6 +231,7 @@ async function initializeSampleProducts() {
 
 module.exports = {
   createInventoryItem,
+  findInventoryItemByNameAndType,
   getAllInventoryItems,
   getInventoryItemById,
   updateInventoryItem,
