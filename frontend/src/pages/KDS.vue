@@ -31,11 +31,10 @@
           <div v-if="order.notes" class="text-xs text-gray-500 mt-1">Order Notes: {{ order.notes }}</div>
           <div class="flex-1"></div>
           <div class="mt-2 flex items-center space-x-2">
-            <span class="text-sm font-semibold text-gray-800">{{ order.status }}</span>
-            <button v-if="order.status === 'Idle'" @click="setStatus(order, 'Cooking')" class="btn btn-outline btn-sm">Cooking</button>
-            <button v-if="order.status === 'Cooking'" @click="setStatus(order, 'Ready')" class="btn btn-primary btn-sm">Ready</button>
-            <button v-if="order.status === 'Cooking'" disabled class="btn btn-outline btn-sm">Cooking</button>
-            <button v-if="order.status === 'Ready'" disabled class="btn btn-primary btn-sm">Ready</button>
+            <span class="text-sm font-semibold text-gray-800">{{ displayStatus(order.status) }}</span>
+            <button v-if="order.status === 'pending'" @click="advanceStatus(order, 'preparing')" class="btn btn-outline btn-sm">Cooking</button>
+            <button v-if="order.status === 'preparing'" @click="advanceStatus(order, 'ready')" class="btn btn-primary btn-sm">Ready</button>
+            <button v-if="order.status === 'ready'" @click="completeOrder(order)" class="btn btn-success btn-sm">Complete</button>
           </div>
         </div>
       </div>
@@ -56,15 +55,22 @@ const orders = ref([]);
 const socket = io('http://localhost:5000');
 
 async function fetchOrders() {
-  const res = await fetch('http://localhost:5000/api/orders/status/pending', {
+  // Fetch orders that are pending, preparing, or ready (not completed)
+  const res = await fetch('http://localhost:5000/api/orders', {
     headers: getAuthHeaders()
   });
   const data = await res.json();
-  orders.value = data.map(order => ({
+  
+  // Filter to only show orders that are still in progress
+  const activeOrders = data.filter(order => 
+    ['pending', 'preparing', 'ready'].includes(order.status)
+  );
+  
+  orders.value = activeOrders.map(order => ({
     id: order.id,
     number: order.order_number,
     table: order.table_number,
-    status: order.status.charAt(0).toUpperCase() + order.status.slice(1),
+    status: order.status, // keep backend status
     notes: order.notes,
     items: order.items.map(item => ({
       id: item.product_id,
@@ -83,7 +89,7 @@ onMounted(() => {
         id: order.id,
         number: order.order_number,
         table: order.table_number,
-        status: order.status.charAt(0).toUpperCase() + order.status.slice(1),
+        status: 'pending',
         notes: order.notes,
         items: order.items.map(item => ({
           id: item.product_id,
@@ -94,10 +100,58 @@ onMounted(() => {
       });
     }
   });
+  socket.on('orderStatusUpdated', (order) => {
+    const idx = orders.value.findIndex(o => o.id === order.id);
+    if (idx !== -1) {
+      orders.value[idx].status = order.status;
+    }
+  });
 });
 
+function displayStatus(status) {
+  if (status === 'preparing') return 'Cooking';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+async function advanceStatus(order, next) {
+  try {
+    const res = await fetch(`http://localhost:5000/api/orders/${order.id}/status`, {
+      method: 'PUT',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: next })
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Failed to update status:', res.status, text);
+      return;
+    }
+    const updated = await res.json();
+    order.status = updated.status;
+  } catch (e) {
+    console.error('Error calling status API', e);
+  }
+}
+
+async function completeOrder(order) {
+  const res = await fetch(`http://localhost:5000/api/orders/${order.id}/status`, {
+    method: 'PUT',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ status: 'completed' })
+  });
+  if (res.ok) {
+    // Remove from current KDS list when completed
+    orders.value = orders.value.filter(o => o.id !== order.id);
+  }
+}
+
 function setStatus(order, newStatus) {
-  // Optionally, send status update to backend here
+  // deprecated
   order.status = newStatus;
 }
 

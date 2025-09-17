@@ -1,22 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- Navbar -->
-    <nav class="flex items-center justify-between bg-white px-6 py-3 shadow-sm">
-      <div class="flex items-center">
-        <span class="w-8 h-8 bg-gray-200 rounded-full mr-3"></span>
-        <span class="text-xl font-semibold text-gray-800">Admin</span>
-      </div>
-      <div class="flex-1 flex justify-end items-center">
-        <div class="flex items-center space-x-6">
-          <a @click.prevent="goToDashboard" class="text-gray-700 hover:underline cursor-pointer">Dashboard</a>
-          <a @click.prevent="showCalendar = true" class="text-gray-700 hover:underline cursor-pointer">Calendar</a>
-          <a @click.prevent="goToInventoryOrders" class="text-gray-700 hover:underline cursor-pointer">Inventory Management/Order History</a>
-          <a @click.prevent="downloadSalesReport" class="text-gray-700 hover:underline cursor-pointer">Download Excel</a>
-          <span class="text-gray-700 font-semibold">Manage users</span>
-          <button @click="handleLogout" class="text-red-500 hover:underline px-4 py-2 bg-black text-white rounded font-bold" style="color: #FFFFFF !important;">Logout</button>
-        </div>
-      </div>
-    </nav>
+    <AdminNavbar @show-calendar="showCalendar = true" />
 
     <!-- Calendar Popup -->
     <div v-if="showCalendar" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showCalendar = false">
@@ -191,6 +176,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import CalendarPopup from '../components/CalendarPopup.vue';
+import AdminNavbar from '../components/AdminNavbar.vue';
 
 const router = useRouter();
 const showCalendar = ref(false);
@@ -275,60 +261,6 @@ function handleLogout() {
   router.push('/login');
 }
 
-async function downloadSalesReport() {
-  try {
-    // Show loading state
-    const link = document.querySelector('a[onclick*="downloadSalesReport"]');
-    if (link) {
-      link.textContent = 'Generating...';
-      link.style.pointerEvents = 'none';
-    }
-
-    // Make API call to download Excel file
-    const response = await fetch('http://localhost:5000/api/sales/report?reportType=detailed', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to generate report');
-    }
-
-    // Get the blob from the response
-    const blob = await response.blob();
-    
-    // Create a download link
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sales_report_${new Date().toISOString().split('T')[0]}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-
-    // Reset button text
-    if (link) {
-      link.textContent = 'Download Excel';
-      link.style.pointerEvents = 'auto';
-    }
-
-  } catch (error) {
-    console.error('Error downloading sales report:', error);
-    alert('Failed to download sales report. Please try again.');
-    
-    // Reset button text on error
-    const link = document.querySelector('a[onclick*="downloadSalesReport"]');
-    if (link) {
-      link.textContent = 'Download Excel';
-      link.style.pointerEvents = 'auto';
-    }
-  }
-}
 
 async function submitAddUser() {
   isSubmitting.value = true;

@@ -97,7 +97,17 @@ async function updateOrderStatusHandler(req, res) {
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
-    
+
+    // Emit status update to connected clients (e.g., KDS screens)
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('orderStatusUpdated', order);
+      }
+    } catch (emitErr) {
+      console.warn('Socket emit failed for orderStatusUpdated:', emitErr.message);
+    }
+
     res.json(order);
   } catch (err) {
     console.error('Error updating order status:', err);

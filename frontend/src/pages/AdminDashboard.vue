@@ -8,7 +8,7 @@
       <div v-if="showCalendar" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showCalendar = false">
         <div class="relative">
           <button class="absolute top-2 right-2 text-gray-300 hover:text-white z-10" @click="showCalendar = false">&times;</button>
-          <CalendarPopup />
+          <CalendarPopup v-model="selectedDate" />
         </div>
       </div>
 
@@ -19,13 +19,19 @@
           <!-- Sales Overview -->
           <div class="bg-white rounded-lg shadow p-6 border">
             <div class="flex items-center justify-between mb-2">
-              <h2 class="text-2xl font-bold text-left text-gray-800">Sales Overview</h2>
+              <div>
+                <h2 class="text-2xl font-bold text-left text-gray-800">Sales Overview</h2>
+                <div v-if="selectedDate" class="text-sm text-blue-600 font-medium">
+                  Filtered by: {{ selectedDate.toLocaleDateString() }}
+                </div>
+              </div>
               <div class="space-x-2">
                 <button v-for="type in ['Daily', 'Weekly', 'Monthly']" :key="type" @click="selectedType = type" :class="[selectedType === type ? 'btn btn-primary' : 'btn btn-outline', 'px-3 py-1 rounded border']">{{ type }}</button>
+                <button v-if="selectedDate" @click="clearDateFilter" class="btn btn-outline px-3 py-1 rounded border text-red-600 border-red-600 hover:bg-red-50">Clear Filter</button>
               </div>
             </div>
             <div class="h-56">
-              <line-chart :chart-data="chartData" />
+              <line-chart :key="chartKey" :chart-data="chartData" />
             </div>
           </div>
           <!-- Top Selling Items -->
@@ -45,7 +51,7 @@
         <div class="flex flex-col gap-6">
           <!-- Today's Sale Summary -->
           <div class="bg-white rounded-lg shadow p-6 border">
-            <h2 class="text-2xl font-bold mb-2 text-left text-gray-800">Today's Sale Summary</h2>
+            <h2 class="text-2xl font-bold mb-2 text-left text-gray-800">{{ selectedDate ? selectedDate.toLocaleDateString() + ' Sale Summary' : 'Today\'s Sale Summary' }}</h2>
             <table class="w-full text-sm mb-2 border-t border-b">
               <thead>
                 <tr class="border-b">
@@ -72,7 +78,7 @@
             </div>
           </div>
           <!-- Inventory Alerts -->
-          <div class="bg-white rounded-lg shadow p-6 border">
+          <div class="bg-white rounded-lg shadow p-6 border inventory-alerts">
             <h2 class="text-xl font-bold mb-2 text-left text-gray-800">Inventory alerts</h2>
             <div v-if="inventoryLoading" class="text-gray-500">Loading inventory alerts...</div>
             <div v-else-if="inventoryError" class="text-red-500">{{ inventoryError }}</div>
@@ -81,7 +87,7 @@
                 <h3 class="font-semibold text-sm mb-1">Low Stock Items</h3>
                 <ul v-if="lowStockItems.length" class="text-xs">
                   <li v-for="item in lowStockItems" :key="item.id" class="flex justify-between border-b last:border-b-0 py-1">
-                    <span>{{ item.name }}</span>
+                    <span class="text-gray-800 font-semibold">{{ item.name }}</span>
                     <span class="text-red-600 font-semibold">{{ item.batches.reduce((sum, b) => sum + b.quantity, 0) }} left</span>
                   </li>
                 </ul>
@@ -91,7 +97,7 @@
                 <h3 class="font-semibold text-sm mb-1">Expiring Items</h3>
                 <ul v-if="expiringItems.length" class="text-xs">
                   <li v-for="batch in expiringItems" :key="batch.batchId" class="flex justify-between border-b last:border-b-0 py-1">
-                    <span>{{ batch.name }} (Batch #{{ batch.batchId }})</span>
+                    <span class="text-gray-800 font-semibold">{{ batch.name }} (Batch #{{ batch.batchId }})</span>
                     <span class="text-yellow-600 font-semibold">Exp: {{ batch.expiry }}</span>
                   </li>
                 </ul>
@@ -117,6 +123,8 @@ import { useOrders } from '../composables/useOrders';
 const router = useRouter();
 const selectedType = ref('Daily');
 const showCalendar = ref(false);
+const selectedDate = ref(null);
+const chartKey = computed(() => (selectedDate.value ? selectedDate.value.toISOString() : `no-date-${selectedType.value}`));
 
 const { orders, loading: ordersLoading, error: ordersError, fetchOrders } = useOrders();
 
@@ -181,61 +189,167 @@ const expiringItems = computed(() => {
   return result;
 });
 
+function formatDay(date) {
+  return date.toLocaleDateString(undefined, { weekday: 'short' });
+}
+function formatMonth(date) {
+  return date.toLocaleDateString(undefined, { month: 'short' });
+}
+function startOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1) - day; // Monday start
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
 const chartData = computed(() => {
-  // Mock data for chart
-  if (selectedType.value === 'Daily') {
-    return {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      datasets: [{
-        label: 'Sales',
-        data: [10, 40, 80, 30, 50, 40, 60],
-        borderColor: '#222',
-        fill: false,
-      }],
-    };
-  } else if (selectedType.value === 'Weekly') {
-    return {
-      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-      datasets: [{
-        label: 'Sales',
-        data: [200, 350, 300, 400],
-        borderColor: '#222',
-        fill: false,
-      }],
-    };
-  } else {
-    return {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
-      datasets: [{
-        label: 'Sales',
-        data: [1200, 1500, 1100, 1800, 1700, 1600, 1750],
-        borderColor: '#222',
-        fill: false,
-      }],
-    };
+  let filteredOrders = orders.value.filter(o => o.status === 'completed');
+  
+  // Filter by selected date if one is selected
+  if (selectedDate.value) {
+    const selectedDateStr = selectedDate.value.toISOString().split('T')[0];
+    filteredOrders = filteredOrders.filter(o => {
+      const orderDate = new Date(o.created_at).toISOString().split('T')[0];
+      return orderDate === selectedDateStr;
+    });
   }
+  
+  const today = new Date();
+  let labels = [];
+  let data = [];
+
+  if (selectedType.value === 'Daily') {
+    if (selectedDate.value) {
+      // Show hourly data for selected date
+      const buckets = [];
+      for (let i = 0; i < 24; i++) {
+        const hourStart = new Date(selectedDate.value);
+        hourStart.setHours(i, 0, 0, 0);
+        const hourEnd = new Date(selectedDate.value);
+        hourEnd.setHours(i, 59, 59, 999);
+        
+        const sum = filteredOrders
+          .filter(o => {
+            const orderTime = new Date(o.created_at);
+            return orderTime >= hourStart && orderTime <= hourEnd;
+          })
+          .reduce((s, o) => s + parseFloat(o.total), 0);
+        buckets.push({ label: `${i}:00`, value: sum });
+      }
+      labels = buckets.map(b => b.label);
+      data = buckets.map(b => b.value);
+    } else {
+      // Last 7 days
+      const buckets = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        const sum = filteredOrders
+          .filter(o => new Date(o.created_at).toISOString().split('T')[0] === key)
+          .reduce((s, o) => s + parseFloat(o.total), 0);
+        buckets.push({ label: formatDay(d), value: sum });
+      }
+      labels = buckets.map(b => b.label);
+      data = buckets.map(b => b.value);
+    }
+  } else if (selectedType.value === 'Weekly') {
+    // Last 4 weeks
+    const weeks = [];
+    let start = startOfWeek(today);
+    for (let i = 3; i >= 0; i--) {
+      const ws = new Date(start);
+      ws.setDate(ws.getDate() - i * 7);
+      const we = new Date(ws);
+      we.setDate(ws.getDate() + 6);
+      const sum = filteredOrders
+        .filter(o => {
+          const d = new Date(o.created_at);
+          return d >= ws && d <= we;
+        })
+        .reduce((s, o) => s + parseFloat(o.total), 0);
+      weeks.push({ label: `${ws.toLocaleDateString()} - ${we.toLocaleDateString()}`, value: sum });
+    }
+    labels = weeks.map(w => w.label);
+    data = weeks.map(w => w.value);
+  } else {
+    // Last 7 months
+    const months = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
+      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+      const sum = filteredOrders
+        .filter(o => {
+          const od = new Date(o.created_at);
+          return od >= monthStart && od <= monthEnd;
+        })
+        .reduce((s, o) => s + parseFloat(o.total), 0);
+      months.push({ label: formatMonth(d), value: sum });
+    }
+    labels = months.map(m => m.label);
+    data = months.map(m => m.value);
+  }
+
+  return {
+    labels,
+    datasets: [{ label: 'Sales', data, borderColor: '#222', fill: false }],
+  };
 });
 
-const topSelling = [
-  { name: 'product', sold: 30 },
-  { name: 'product', sold: 25 },
-  { name: 'product', sold: 20 },
-  { name: 'product', sold: 15 },
-  { name: 'product', sold: 10 },
-];
+const topSelling = computed(() => {
+  // Aggregate quantities per product
+  let filteredOrders = orders.value.filter(o => o.status === 'completed');
+  
+  // Filter by selected date if one is selected
+  if (selectedDate.value) {
+    const selectedDateStr = selectedDate.value.toISOString().split('T')[0];
+    filteredOrders = filteredOrders.filter(o => {
+      const orderDate = new Date(o.created_at).toISOString().split('T')[0];
+      return orderDate === selectedDateStr;
+    });
+  } else {
+    // Default: last 30 days
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    filteredOrders = filteredOrders.filter(o => new Date(o.created_at) >= cutoff);
+  }
+  
+  const map = new Map();
+  filteredOrders.forEach(o => {
+    if (Array.isArray(o.items)) {
+      o.items.forEach(it => {
+        const name = it.product_name || it.name || 'Unknown';
+        const qty = Number(it.quantity) || 0;
+        map.set(name, (map.get(name) || 0) + qty);
+      });
+    }
+  });
+  return Array.from(map.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, qty]) => ({ name, sold: qty }));
+});
 
 // Generate sales summary from actual order data
 const saleSummary = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
-  const todayOrders = orders.value.filter(order => {
+  let targetDate = new Date().toISOString().split('T')[0];
+  
+  // Use selected date if one is selected, otherwise use today
+  if (selectedDate.value) {
+    targetDate = selectedDate.value.toISOString().split('T')[0];
+  }
+  
+  const filteredOrders = orders.value.filter(order => {
     const orderDate = new Date(order.created_at).toISOString().split('T')[0];
-    return orderDate === today && order.status === 'completed';
+    return orderDate === targetDate && order.status === 'completed';
   });
   
   // Group items by name and sum quantities
   const itemMap = new Map();
   
-  todayOrders.forEach(order => {
+  filteredOrders.forEach(order => {
     if (order.items && Array.isArray(order.items)) {
       order.items.forEach(item => {
         if (itemMap.has(item.product_name)) {
@@ -256,44 +370,68 @@ const saleSummary = computed(() => {
   return Array.from(itemMap.values()).slice(0, 7); // Show top 7 items
 });
 
-// Calculate today's revenue from real orders
+// Calculate revenue from real orders
 const todayRevenue = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
+  let targetDate = new Date().toISOString().split('T')[0];
+  
+  // Use selected date if one is selected, otherwise use today
+  if (selectedDate.value) {
+    targetDate = selectedDate.value.toISOString().split('T')[0];
+  }
+  
   return orders.value
     .filter(order => {
       const orderDate = new Date(order.created_at).toISOString().split('T')[0];
-      return orderDate === today && order.status === 'completed';
+      return orderDate === targetDate && order.status === 'completed';
     })
     .reduce((sum, order) => sum + parseFloat(order.total), 0);
 });
 
 // Calculate cash vs cashless sales
 const cashSales = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
+  let targetDate = new Date().toISOString().split('T')[0];
+  
+  // Use selected date if one is selected, otherwise use today
+  if (selectedDate.value) {
+    targetDate = selectedDate.value.toISOString().split('T')[0];
+  }
+  
   return orders.value
     .filter(order => {
       const orderDate = new Date(order.created_at).toISOString().split('T')[0];
-      return orderDate === today && order.status === 'completed' && order.payment_method === 'Cash';
+      return orderDate === targetDate && order.status === 'completed' && order.payment_method === 'Cash';
     })
     .reduce((sum, order) => sum + parseFloat(order.total), 0);
 });
 
 const cashlessSales = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
+  let targetDate = new Date().toISOString().split('T')[0];
+  
+  // Use selected date if one is selected, otherwise use today
+  if (selectedDate.value) {
+    targetDate = selectedDate.value.toISOString().split('T')[0];
+  }
+  
   return orders.value
     .filter(order => {
       const orderDate = new Date(order.created_at).toISOString().split('T')[0];
-      return orderDate === today && order.status === 'completed' && order.payment_method !== 'Cash';
+      return orderDate === targetDate && order.status === 'completed' && order.payment_method !== 'Cash';
     })
     .reduce((sum, order) => sum + parseFloat(order.total), 0);
 });
 
 const totalDiscount = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
+  let targetDate = new Date().toISOString().split('T')[0];
+  
+  // Use selected date if one is selected, otherwise use today
+  if (selectedDate.value) {
+    targetDate = selectedDate.value.toISOString().split('T')[0];
+  }
+  
   return orders.value
     .filter(order => {
       const orderDate = new Date(order.created_at).toISOString().split('T')[0];
-      return orderDate === today && order.status === 'completed';
+      return orderDate === targetDate && order.status === 'completed';
     })
     .reduce((sum, order) => sum + parseFloat(order.discount || 0), 0);
 });
@@ -374,6 +512,10 @@ async function downloadSalesReport() {
     }
   }
 }
+
+function clearDateFilter() {
+  selectedDate.value = null;
+}
 </script>
 
 <style scoped>
@@ -417,4 +559,8 @@ nav .font-bold {
   color: #d97706 !important;
   font-weight: 700;
 }
+
+/* Force high-contrast text for inventory alert list */
+.inventory-alerts ul li { color: #111827 !important; }
+.inventory-alerts ul li span:first-child { color: #111827 !important; }
 </style> 

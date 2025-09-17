@@ -161,11 +161,23 @@ async function getOrderById(id) {
 
 // Update order status
 async function updateOrderStatus(id, status) {
-  const result = await pool.query(
-    'UPDATE orders SET status = $1, completed_at = CASE WHEN $1 = $2 THEN CURRENT_TIMESTAMP ELSE completed_at END WHERE id = $3 RETURNING *',
-    [status, 'completed', id]
+  // Update status first
+  const updated = await pool.query(
+    `UPDATE orders SET status = $1 WHERE id = $2 RETURNING *`,
+    [status, id]
   );
-  return result.rows[0];
+  const order = updated.rows[0];
+  if (!order) return null;
+
+  // If completed, set completed_at separately to avoid type inference issues
+  if (String(status) === 'completed') {
+    const completedRes = await pool.query(
+      `UPDATE orders SET completed_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    return completedRes.rows[0];
+  }
+  return order;
 }
 
 // Get orders by status

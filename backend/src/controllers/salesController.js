@@ -1,6 +1,53 @@
 const ExcelJS = require('exceljs');
+const pool = require('../db');
 
-// Mock sales data - in a real app, this would come from your database
+// Get real sales data from database
+async function getSalesData(startDate, endDate) {
+  try {
+    let query = `
+      SELECT 
+        o.id,
+        o.order_number,
+        o.created_at,
+        o.status,
+        o.total,
+        o.payment_method,
+        o.discount,
+        o.table_number,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', oi.id,
+              'product_name', oi.product_name,
+              'quantity', oi.quantity,
+              'unit_price', oi.unit_price,
+              'total_price', oi.total_price
+            )
+          ) FILTER (WHERE oi.id IS NOT NULL), 
+          '[]'::json
+        ) as items
+      FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      WHERE o.status = 'completed'
+    `;
+    
+    const params = [];
+    if (startDate && endDate) {
+      query += ` AND DATE(o.created_at) BETWEEN $1 AND $2`;
+      params.push(startDate, endDate);
+    }
+    
+    query += ` GROUP BY o.id ORDER BY o.created_at DESC`;
+    
+    const result = await pool.query(query, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Error fetching sales data:', error);
+    throw error;
+  }
+}
+
+// Mock sales data - fallback if database fails
 const mockSalesData = [
   {
     id: 1,
@@ -343,12 +390,34 @@ async function generateSalesReport(req, res) {
   try {
     const { startDate, endDate, reportType = 'detailed' } = req.query;
     
-    // Filter data by date range if provided
-    let filteredData = mockSalesData;
-    if (startDate && endDate) {
-      filteredData = mockSalesData.filter(order => 
-        order.date >= startDate && order.date <= endDate
-      );
+    // Get real sales data from database
+    let filteredData;
+    try {
+      filteredData = await getSalesData(startDate, endDate);
+      
+      // Transform database data to match expected format
+      filteredData = filteredData.map(order => ({
+        id: order.id,
+        number: order.order_number,
+        time: new Date(order.created_at).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+        date: new Date(order.created_at).toISOString().split('T')[0],
+        table: order.table_number || 'N/A',
+        status: order.status,
+        total: parseFloat(order.total),
+        paymentMethod: order.payment_method,
+        discount: parseFloat(order.discount || 0),
+        items: order.items || [],
+        completedAt: order.created_at
+      }));
+    } catch (dbError) {
+      console.error('Database error, falling back to mock data:', dbError);
+      // Fallback to mock data if database fails
+      filteredData = mockSalesData;
+      if (startDate && endDate) {
+        filteredData = mockSalesData.filter(order => 
+          order.date >= startDate && order.date <= endDate
+        );
+      }
     }
 
     // Create a new workbook and worksheet

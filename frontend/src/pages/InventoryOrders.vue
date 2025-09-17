@@ -602,3 +602,38 @@ function formatDate(dateString) {
   return date.toLocaleString();
 }
 </script>
+
+<style scoped>
+/* Improve overall text contrast */
+.text-gray-400, .text-gray-500, .text-gray-300,
+.text-xs, .text-sm, .text-gray-700, .text-gray-600 {
+  color: #1f2937 !important; /* slate-800 */
+  opacity: 1 !important;
+}
+
+/* Ensure form controls have dark text on light backgrounds */
+.input, .input.input-bordered,
+.select, .select.select-bordered,
+textarea, input, select {
+  color: #111827 !important; /* gray-900 */
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important; /* gray-300 */
+}
+
+/* Options inside dropdowns */
+select option { color: #111827; }
+
+/* Placeholders readable */
+::placeholder { color: #374151 !important; opacity: 1; }
+
+/* Buttons: outline variant readable */
+.btn.btn-outline {
+  color: #1f2937 !important;
+  border-color: #6366f1 !important; /* indigo-500 */
+  background-color: #e0e7ff !important; /* indigo-100 */
+  font-weight: 700 !important;
+}
+
+/* Tags/badges in cards */
+.bg-white div, .bg-white span { color: #1f2937 !important; }
+</style>

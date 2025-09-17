@@ -10,19 +10,38 @@
     </div>
     <div class="grid grid-cols-7 gap-1 text-center">
       <div v-for="d in leadingDays" :key="'lead'+d" class="py-2 text-gray-500 bg-gray-700 rounded cursor-not-allowed">{{ d }}</div>
-      <div v-for="day in daysInMonth" :key="day" :class="['py-2 rounded font-semibold', isToday(day) ? 'bg-white text-gray-800' : 'bg-gray-900 hover:bg-gray-700 cursor-pointer']">
+      <div v-for="day in daysInMonth" :key="day" :class="['py-2 rounded font-semibold', getDayClasses(day)]" @click="selectDate(day)">
         {{ day }}
       </div>
       <div v-for="d in trailingDays" :key="'trail'+d" class="py-2 text-gray-500 bg-gray-700 rounded cursor-not-allowed">{{ d }}</div>
+    </div>
+    <div v-if="selectedDate" class="mt-3 text-center">
+      <button @click="clearSelection" class="text-xs text-gray-400 hover:text-white">Clear Selection</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+
+const props = defineProps({
+  modelValue: {
+    type: Date,
+    default: null
+  }
+});
+
+const emit = defineEmits(['update:modelValue']);
+
 const today = new Date();
 const currentMonth = ref(today.getMonth());
 const currentYear = ref(today.getFullYear());
+const selectedDate = ref(props.modelValue);
+
+// Keep internal selection in sync with parent v-model
+watch(() => props.modelValue, (val) => {
+  selectedDate.value = val;
+});
 
 const days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const monthNames = [
@@ -64,6 +83,7 @@ function prevMonth() {
     currentMonth.value--;
   }
 }
+
 function nextMonth() {
   if (currentMonth.value === 11) {
     currentMonth.value = 0;
@@ -72,11 +92,31 @@ function nextMonth() {
     currentMonth.value++;
   }
 }
-function isToday(day) {
+
+function isSelected(day) {
+  if (!selectedDate.value) return false;
   return (
-    day === today.getDate() &&
-    currentMonth.value === today.getMonth() &&
-    currentYear.value === today.getFullYear()
+    day === selectedDate.value.getDate() &&
+    currentMonth.value === selectedDate.value.getMonth() &&
+    currentYear.value === selectedDate.value.getFullYear()
   );
+}
+
+function getDayClasses(day) {
+  if (isSelected(day)) {
+    return 'bg-white text-gray-800 ring-2 ring-blue-500';
+  }
+  return 'bg-gray-900 hover:bg-gray-700 cursor-pointer';
+}
+
+function selectDate(day) {
+  const date = new Date(currentYear.value, currentMonth.value, day);
+  selectedDate.value = date;
+  emit('update:modelValue', date);
+}
+
+function clearSelection() {
+  selectedDate.value = null;
+  emit('update:modelValue', null);
 }
 </script> 
