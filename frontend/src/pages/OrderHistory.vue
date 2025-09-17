@@ -113,30 +113,10 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuth } from '../composables/useAuth';
+import { useOrders } from '../composables/useOrders';
 
 const router = useRouter();
-const { getAuthHeaders } = useAuth();
-const orders = ref([]);
-const loading = ref(false);
-const error = ref('');
-
-async function fetchOrders() {
-  loading.value = true;
-  error.value = '';
-  try {
-    const res = await fetch('http://localhost:5000/api/orders', {
-      headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch orders');
-    orders.value = await res.json();
-  } catch (e) {
-    console.error('Error fetching orders:', e);
-    error.value = e.message;
-  } finally {
-    loading.value = false;
-  }
-}
+const { orders, loading, error, fetchOrders } = useOrders();
 
 function formatDate(dateString) {
   if (!dateString) return 'N/A';

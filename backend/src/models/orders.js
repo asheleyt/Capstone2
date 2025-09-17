@@ -192,6 +192,119 @@ async function getOrdersByStatus(status) {
   return result.rows;
 }
 
+// Void order - only allowed for pending orders
+async function voidOrder(id) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // First check if order exists and is pending
+    const orderCheck = await client.query(
+      'SELECT status FROM orders WHERE id = $1',
+      [id]
+    );
+    
+    if (orderCheck.rows.length === 0) {
+      throw new Error('Order not found');
+    }
+    
+    if (orderCheck.rows[0].status !== 'pending') {
+      throw new Error('Order can only be voided when status is pending');
+    }
+    
+    // Update order status to cancelled
+    const result = await client.query(
+      'UPDATE orders SET status = $1 WHERE id = $2 RETURNING *',
+      ['cancelled', id]
+    );
+    
+    await client.query('COMMIT');
+    return result.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Update order (items and notes) - only allowed for pending orders
+async function updateOrder(id, orderData) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // First check if order exists and is pending
+    const orderCheck = await client.query(
+      'SELECT status FROM orders WHERE id = $1',
+      [id]
+    );
+    
+    if (orderCheck.rows.length === 0) {
+      throw new Error('Order not found');
+    }
+    
+    if (orderCheck.rows[0].status !== 'pending') {
+      throw new Error('Order can only be edited when status is pending');
+    }
+    
+    // Update order notes if provided
+    if (orderData.notes !== undefined) {
+      await client.query(
+        'UPDATE orders SET notes = $1 WHERE id = $2',
+        [orderData.notes, id]
+      );
+    }
+    
+    // If items are provided, update them
+    if (orderData.items && orderData.items.length > 0) {
+      // Delete existing order items
+      await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
+      
+      // Add new order items
+      for (const item of orderData.items) {
+        await client.query(
+          `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            id,
+            item.product_id || item.id,
+            item.product_name,
+            item.quantity,
+            item.unit_price,
+            item.unit_price * item.quantity
+          ]
+        );
+      }
+      
+      // Recalculate totals
+      const itemsTotal = await client.query(
+        'SELECT SUM(total_price) as total FROM order_items WHERE order_id = $1',
+        [id]
+      );
+      
+      const newTotal = parseFloat(itemsTotal.rows[0].total || 0);
+      const discount = orderData.discount || 0;
+      const finalTotal = newTotal - discount;
+      
+      await client.query(
+        'UPDATE orders SET subtotal = $1, discount = $2, total = $3 WHERE id = $4',
+        [newTotal, discount, finalTotal, id]
+      );
+    }
+    
+    await client.query('COMMIT');
+    
+    // Return updated order
+    return await getOrderById(id);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   initOrdersTables,
   createOrder,
@@ -199,4 +312,6 @@ module.exports = {
   getOrderById,
   updateOrderStatus,
   getOrdersByStatus,
+  updateOrder,
+  voidOrder,
 }; 

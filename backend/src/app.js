@@ -3,6 +3,7 @@ const cors = require('cors');
 const pool = require('./db');
 const { initUserTable } = require('./models/user');
 const { initializeSampleProducts, initInventoryTables } = require('./models/inventory');
+const { initOrdersTables } = require('./models/orders');
 const userRoutes = require('./routes/user');
 const salesRoutes = require('./routes/sales');
 const inventoryRoutes = require('./routes/inventory');
@@ -47,6 +48,9 @@ async function startServer() {
     
     await initInventoryTables();
     console.log('Inventory tables initialized');
+    
+    await initOrdersTables();
+    console.log('Orders tables initialized');
     
     await initializeSampleProducts();
     console.log('Sample products initialized');

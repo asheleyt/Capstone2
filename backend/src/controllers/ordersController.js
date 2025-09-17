@@ -4,6 +4,8 @@ const {
   getOrderById,
   updateOrderStatus,
   getOrdersByStatus,
+  updateOrder,
+  voidOrder,
 } = require('../models/orders');
 const { consumeStockFIFO } = require('../models/inventory');
 
@@ -115,10 +117,93 @@ async function getOrdersByStatusHandler(req, res) {
   }
 }
 
+// Update order (edit items and notes)
+async function updateOrderHandler(req, res) {
+  try {
+    const { id } = req.params;
+    const orderData = req.body;
+    
+    console.log('Update order request:', { id, orderData });
+    
+    // Validate required fields
+    if (!orderData.items || orderData.items.length === 0) {
+      return res.status(400).json({ error: 'Order must contain at least one item' });
+    }
+    
+    const order = await updateOrder(id, orderData);
+    
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    console.log('Order updated successfully:', order);
+    
+    // Emit updated order to KDS via socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('orderUpdated', order);
+    }
+    
+    res.json(order);
+  } catch (err) {
+    console.error('Error updating order:', err);
+    if (err.message === 'Order not found') {
+      return res.status(404).json({ error: err.message });
+    }
+    if (err.message === 'Order can only be edited when status is pending') {
+      return res.status(400).json({ error: err.message });
+    }
+    res.status(500).json({ error: 'Failed to update order', details: err.message });
+  }
+}
+
+// Void order
+async function voidOrderHandler(req, res) {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+    
+    console.log('Void order request:', { id, password });
+    
+    // Simple password validation (you can make this more secure)
+    const validPasswords = ['july 2 2004', 'pasig', 'waiter'];
+    if (!password || !validPasswords.includes(password.toLowerCase())) {
+      return res.status(401).json({ error: 'Invalid admin password' });
+    }
+    
+    const order = await voidOrder(id);
+    
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    console.log('Order voided successfully:', order);
+    
+    // Emit voided order to KDS via socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('orderVoided', order);
+    }
+    
+    res.json(order);
+  } catch (err) {
+    console.error('Error voiding order:', err);
+    if (err.message === 'Order not found') {
+      return res.status(404).json({ error: err.message });
+    }
+    if (err.message === 'Order can only be voided when status is pending') {
+      return res.status(400).json({ error: err.message });
+    }
+    res.status(500).json({ error: 'Failed to void order', details: err.message });
+  }
+}
+
 module.exports = {
   createOrderHandler,
   getAllOrdersHandler,
   getOrderByIdHandler,
   updateOrderStatusHandler,
   getOrdersByStatusHandler,
+  updateOrderHandler,
+  voidOrderHandler,
 }; 

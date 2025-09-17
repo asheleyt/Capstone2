@@ -1,12 +1,12 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <AdminNavbar @show-calendar="showCalendar = true" />
+    <AdminNavbar @show-calendar="showCalendar = true"></AdminNavbar>
 
     <!-- Calendar Popup -->
     <div v-if="showCalendar" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showCalendar = false">
       <div class="bg-white rounded-lg shadow-lg p-6 relative w-80">
         <button class="absolute top-2 right-2 text-gray-500 hover:text-black" @click="showCalendar = false">&times;</button>
-        <CalendarPopup />
+        <CalendarPopup></CalendarPopup>
       </div>
     </div>
 
@@ -18,7 +18,7 @@
         <form @submit.prevent="submitRawMaterial">
           <div class="mb-3">
             <label class="block text-sm font-semibold mb-1">Add to Existing Raw Material</label>
-            <select v-model="rawForm.existingItemId" class="select select-bordered w-full">
+            <select v-model="rawForm.existingItemId" class="select select-bordered w-full text-white">
               <option value="">-- Create New --</option>
               <option v-for="raw in inventory.filter(i => i.type === 'raw')" :key="raw.id" :value="raw.id">
                 {{ raw.name }} ({{ raw.unit || 'unit' }})
@@ -27,7 +27,7 @@
           </div>
           <div class="mb-3" v-if="!rawForm.existingItemId">
             <label class="block text-sm font-semibold mb-1">Name</label>
-            <input v-model="rawForm.name" class="input input-bordered w-full" required />
+            <input v-model="rawForm.name" class="input input-bordered w-full text-white" required />
           </div>
           <div class="mb-3">
             <label class="block text-sm font-semibold mb-1">Quantity</label>
@@ -35,7 +35,7 @@
           </div>
           <div class="mb-3">
             <label class="block text-sm font-semibold mb-1">Expiry Date</label>
-            <input v-model="rawForm.expiry" type="date" class="input input-bordered w-full" required />
+            <input v-model="rawForm.expiry" type="date" class="input input-bordered w-full text-white" required />
           </div>
           <div class="mb-3">
             <label class="block text-sm font-semibold mb-1">Specific Unit Amount</label>
@@ -129,7 +129,7 @@
               <input v-model.number="rm.quantity" type="number" min="1" class="input input-bordered w-20" placeholder="Qty" />
               <button type="button" class="btn btn-error btn-xs" @click="removeProductRawMaterial(idx)">&times;</button>
             </div>
-            <button type="button" class="btn btn-outline btn-sm" @click="addProductRawMaterial">+ Add Raw Material</button>
+            <button type="button" class="btn btn-outline btn-sm text-white bg-black" @click="addProductRawMaterial">+ Add Raw Material</button>
           </div>
           <div v-if="addError" class="text-red-500 text-sm mb-2">{{ addError }}</div>
           <button type="submit" class="btn btn-primary w-full" :disabled="addLoading">
@@ -218,11 +218,12 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V20a2 2 0 01-2 2z" /></svg>
               </span>
               <div>
-                <div class="font-semibold text-gray-800">Order #{{ order.number }}</div>
-                <div class="text-xs text-gray-700">Date: {{ order.date }}</div>
+                <div class="font-semibold text-gray-800">Order #{{ order.order_number }}</div>
+                <div class="text-xs text-gray-700">Date: {{ formatDate(order.created_at) }}</div>
+                <div class="text-xs text-gray-700">Table: {{ order.table_number || 'N/A' }}</div>
               </div>
             </div>
-            <div class="font-semibold">${{ order.amount }}</div>
+            <div class="font-bold">₱{{ parseFloat(order.total).toFixed(2) }}</div>
           </div>
         </div>
       </div>
@@ -231,8 +232,8 @@
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-3xl font-bold text-gray-800">Inventory Management</h2>
           <div class="space-x-2">
-            <button class="btn btn-outline" @click="openRawModal">Add Raw Material</button>
-            <button class="btn btn-outline" @click="openProductModal">Add Product</button>
+            <button class="btn btn-outline bg-black text-white" @click="openRawModal">Add Raw Material</button>
+            <button class="btn btn-outline bg-black text-white" @click="openProductModal">Add Product</button>
           </div>
         </div>
         <div class="mb-4 flex items-center">
@@ -282,7 +283,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import CalendarPopup from '../components/CalendarPopup.vue';
 import { useOrders } from '../composables/useOrders';
@@ -291,7 +292,16 @@ import AdminNavbar from '../components/AdminNavbar.vue';
 
 const router = useRouter();
 const showCalendar = ref(false);
-const { completedOrders } = useOrders();
+const { orders, loading: ordersLoading, error: ordersError, fetchOrders } = useOrders();
+
+let ordersInterval = null;
+onMounted(() => {
+  fetchOrders();
+  ordersInterval = setInterval(fetchOrders, 5000); // Poll every 5 seconds
+});
+onUnmounted(() => {
+  if (ordersInterval) clearInterval(ordersInterval);
+});
 
 // --- Inventory State (from backend) ---
 const inventory = ref([]);
@@ -576,4 +586,19 @@ async function submitEditBatch() {
 async function discardBatch(itemId, batchId) {
   // Always confirm before discarding
   if (confirm('Are you sure you want to discard this batch?')) {
-    await fetch(`
+    await fetch(`http://localhost:5000/api/inventory/batch/${batchId}`,
+      {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      }
+    );
+    await fetchInventory();
+  }
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleString();
+}
+</script>

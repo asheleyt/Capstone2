@@ -294,6 +294,10 @@
                 {{ order.status }}
               </span>
             </div>
+            <div class="flex gap-2 mb-2" v-if="order.status === 'pending'">
+              <button class="btn btn-xs btn-error" @click="voidOrder(order)">Void</button>
+              <button class="btn btn-xs btn-primary" @click="openEditOrderModal(order)">Edit</button>
+            </div>
             
             <div class="text-sm text-gray-600 mb-2">
               <div class="flex items-center space-x-2">
@@ -324,12 +328,47 @@
         </div>
       </div>
     </div>
+
+    <!-- Edit Order Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg p-6 w-[28rem] relative text-black">
+        <button class="absolute top-2 right-2 text-gray-400 hover:text-black" @click="showEditModal = false">&times;</button>
+        <h2 class="text-xl font-bold mb-4">Edit Order #{{ selectedOrder?.order_number }}</h2>
+        <form @submit.prevent="submitEditOrder">
+          <div v-for="(item, idx) in editOrderItems" :key="item.id" class="flex items-center gap-2 mb-2">
+            <span class="flex-1">{{ item.product_name }}</span>
+            <input type="number" v-model.number="item.quantity" min="1" class="input input-bordered w-20 text-white bg-gray-900" />
+            <span>₱{{ item.unit_price }}</span>
+            <button type="button" class="btn btn-xs btn-error" @click="removeEditOrderItem(idx)">&times;</button>
+          </div>
+          <div class="mb-3 flex gap-2 items-end">
+            <div class="flex-1">
+              <label class="block text-sm font-semibold mb-1">Add Item</label>
+              <select v-model="selectedAddProductId" class="select select-bordered w-full text-white bg-gray-900">
+                <option value="" disabled>Select product</option>
+                <option v-for="product in productsNotInEditOrder" :key="product.id" :value="product.id">{{ product.name }}</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-primary" @click="addProductToEditOrder" :disabled="!selectedAddProductId">Add</button>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Notes</label>
+            <textarea v-model="editOrderNotes" class="input input-bordered w-full text-white bg-gray-900" rows="2"></textarea>
+          </div>
+          <div v-if="editOrderError" class="text-red-500 text-sm mb-2">{{ editOrderError }}</div>
+          <button type="submit" class="btn btn-primary w-full" :disabled="editOrderLoading">
+            {{ editOrderLoading ? 'Saving...' : 'Save Changes' }}
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useOrders } from '../composables/useOrders';
 
 const router = useRouter();
 const products = ref([]);
@@ -347,9 +386,7 @@ const tableNumber = ref('');
 
 // Order History
 const showOrderHistory = ref(false);
-const orderHistory = ref([]);
-const orderHistoryLoading = ref(false);
-const orderHistoryError = ref('');
+const { orders: orderHistory, loading: orderHistoryLoading, error: orderHistoryError, fetchOrders: fetchOrderHistory } = useOrders();
 
 // Payment methods
 const paymentMethods = ['Cash', 'maya', 'GCash', 'Card'];
@@ -560,26 +597,107 @@ function goToOrderHistory() {
   router.push('/cashier/order-history');
 }
 
-async function fetchOrderHistory() {
-  orderHistoryLoading.value = true;
-  orderHistoryError.value = '';
-  try {
-    const res = await fetch('http://localhost:5000/api/orders');
-    if (!res.ok) throw new Error('Failed to fetch orders');
-    const data = await res.json();
-    orderHistory.value = data;
-  } catch (e) {
-    console.error('Error fetching order history:', e);
-    orderHistoryError.value = e.message;
-  } finally {
-    orderHistoryLoading.value = false;
-  }
-}
-
 function toggleOrderHistory() {
   showOrderHistory.value = !showOrderHistory.value;
   if (showOrderHistory.value && orderHistory.value.length === 0) {
     fetchOrderHistory();
+  }
+}
+
+const showEditModal = ref(false);
+const selectedOrder = ref(null);
+const editOrderItems = ref([]);
+const editOrderNotes = ref('');
+const editOrderLoading = ref(false);
+const editOrderError = ref('');
+const selectedAddProductId = ref("");
+const productsNotInEditOrder = computed(() => {
+  const ids = editOrderItems.value.map(i => i.product_id || i.id);
+  return products.value.filter(p => !ids.includes(p.id));
+});
+function addProductToEditOrder() {
+  const product = products.value.find(p => p.id === Number(selectedAddProductId.value));
+  if (!product) return;
+  editOrderItems.value.push({
+    id: product.id,
+    product_id: product.id,
+    product_name: product.name,
+    unit_price: product.price,
+    quantity: 1
+  });
+  selectedAddProductId.value = "";
+}
+function removeEditOrderItem(idx) {
+  editOrderItems.value.splice(idx, 1);
+}
+
+async function voidOrder(order) {
+  const password = prompt('Enter admin password to void this sale:');
+  if (!password) return;
+  try {
+    const res = await fetch(`http://localhost:5000/api/orders/${order.id}/void`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ password })
+    });
+    if (!res.ok) throw new Error('Failed to void order.');
+    alert('Order voided successfully.');
+    fetchOrderHistory();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function openEditOrderModal(order) {
+  selectedOrder.value = order;
+  // Deep copy items to avoid mutating original order until save
+  editOrderItems.value = order.items.map(i => ({ ...i }));
+  editOrderNotes.value = order.notes || '';
+  editOrderError.value = '';
+  showEditModal.value = true;
+}
+
+async function submitEditOrder() {
+  editOrderLoading.value = true;
+  editOrderError.value = '';
+  try {
+    const requestData = {
+      items: editOrderItems.value.map(i => ({ 
+        id: i.id, 
+        product_id: i.product_id || i.id,
+        product_name: i.product_name,
+        quantity: i.quantity,
+        unit_price: i.unit_price
+      })),
+      notes: editOrderNotes.value
+    };
+    
+    console.log('Sending edit order request:', {
+      orderId: selectedOrder.value.id,
+      data: requestData
+    });
+    
+    const res = await fetch(`http://localhost:5000/api/orders/${selectedOrder.value.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestData)
+    });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to update order');
+    }
+    alert('Order updated successfully.');
+    showEditModal.value = false;
+    fetchOrderHistory();
+  } catch (e) {
+    editOrderError.value = e.message;
+  } finally {
+    editOrderLoading.value = false;
   }
 }
 

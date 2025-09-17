@@ -112,34 +112,13 @@ import LineChart from '../components/LineChart.vue';
 import CalendarPopup from '../components/CalendarPopup.vue';
 import { useAuth } from '../composables/useAuth';
 import AdminNavbar from '../components/AdminNavbar.vue';
+import { useOrders } from '../composables/useOrders';
 
 const router = useRouter();
 const selectedType = ref('Daily');
 const showCalendar = ref(false);
 
-// Order data from backend
-const orders = ref([]);
-const ordersLoading = ref(false);
-const ordersError = ref('');
-
-// --- Order data: Fetch orders from backend ---
-const { getAuthHeaders } = useAuth();
-
-async function fetchOrders() {
-  ordersLoading.value = true;
-  ordersError.value = '';
-  try {
-    const res = await fetch('http://localhost:5000/api/orders', {
-      headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch orders');
-    orders.value = await res.json();
-  } catch (e) {
-    ordersError.value = e.message;
-  } finally {
-    ordersLoading.value = false;
-  }
-}
+const { orders, loading: ordersLoading, error: ordersError, fetchOrders } = useOrders();
 
 // --- Inventory Alerts: Fetch inventory from backend ---
 const inventory = ref([]);
@@ -151,7 +130,7 @@ async function fetchInventory() {
   inventoryError.value = '';
   try {
     const res = await fetch('http://localhost:5000/api/inventory', {
-      headers: getAuthHeaders()
+      headers: useAuth().getAuthHeaders()
     });
     if (!res.ok) throw new Error('Failed to fetch inventory');
     inventory.value = await res.json();
@@ -398,7 +377,6 @@ async function downloadSalesReport() {
 </script>
 
 <style scoped>
-/* Make the Admin label more visible */
 nav .font-bold {
   color: #1a202c !important; /* dark gray */
   font-weight: 900 !important;
