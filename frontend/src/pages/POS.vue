@@ -300,10 +300,12 @@
             </div>
             
             <div class="text-sm text-gray-600 mb-2">
-              <div class="flex items-center space-x-2">
-                <span>{{ order.order_type }}</span>
-                <span v-if="order.table_number">• Table {{ order.table_number }}</span>
-                <span>• {{ order.payment_method }}</span>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span>{{ order.order_type }}</span>
+                  <span>• {{ order.payment_method }}</span>
+                </div>
+                <div v-if="order.table_number" class="text-gray-800 font-bold text-xl">Table {{ order.table_number }}</div>
               </div>
               <div class="text-xs text-gray-500 mt-1">
                 {{ new Date(order.created_at).toLocaleString() }}
@@ -335,6 +337,15 @@
         <button class="absolute top-2 right-2 text-gray-400 hover:text-black" @click="showEditModal = false">&times;</button>
         <h2 class="text-xl font-bold mb-4">Edit Order #{{ selectedOrder?.order_number }}</h2>
         <form @submit.prevent="submitEditOrder">
+          <div class="mb-3" v-if="selectedOrder?.order_type === 'dine-in'">
+            <label class="block text-sm font-semibold mb-1">Table #</label>
+            <input 
+              type="text" 
+              v-model="editTableNumber" 
+              placeholder="Enter new table number"
+              class="input input-bordered w-40 text-white bg-gray-900"
+            />
+          </div>
           <div v-for="(item, idx) in editOrderItems" :key="item.id" class="flex items-center gap-2 mb-2">
             <span class="flex-1">{{ item.product_name }}</span>
             <input type="number" v-model.number="item.quantity" min="1" class="input input-bordered w-20 text-white bg-gray-900" />
@@ -389,7 +400,7 @@ const showOrderHistory = ref(false);
 const { orders: orderHistory, loading: orderHistoryLoading, error: orderHistoryError, fetchOrders: fetchOrderHistory } = useOrders();
 
 // Payment methods
-const paymentMethods = ['Cash', 'maya', 'GCash', 'Card'];
+const paymentMethods = ['Cash', 'maya', 'GCash'];
 
 // Product categories (you can modify this based on your needs)
 const productCategories = ['Food', 'Beverage', 'Dessert'];
@@ -608,6 +619,7 @@ const showEditModal = ref(false);
 const selectedOrder = ref(null);
 const editOrderItems = ref([]);
 const editOrderNotes = ref('');
+const editTableNumber = ref('');
 const editOrderLoading = ref(false);
 const editOrderError = ref('');
 const selectedAddProductId = ref("");
@@ -656,6 +668,7 @@ function openEditOrderModal(order) {
   // Deep copy items to avoid mutating original order until save
   editOrderItems.value = order.items.map(i => ({ ...i }));
   editOrderNotes.value = order.notes || '';
+  editTableNumber.value = order.table_number || '';
   editOrderError.value = '';
   showEditModal.value = true;
 }
@@ -672,7 +685,8 @@ async function submitEditOrder() {
         quantity: i.quantity,
         unit_price: i.unit_price
       })),
-      notes: editOrderNotes.value
+      notes: editOrderNotes.value,
+      table_number: selectedOrder.value?.order_type === 'dine-in' ? (editTableNumber.value || '').trim() : null
     };
     
     console.log('Sending edit order request:', {

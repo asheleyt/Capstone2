@@ -240,7 +240,7 @@ async function voidOrder(id) {
   }
 }
 
-// Update order (items and notes) - only allowed for pending orders
+// Update order (items, notes, and table number) - only allowed for pending orders
 async function updateOrder(id, orderData) {
   const client = await pool.connect();
   try {
@@ -265,6 +265,20 @@ async function updateOrder(id, orderData) {
       await client.query(
         'UPDATE orders SET notes = $1 WHERE id = $2',
         [orderData.notes, id]
+      );
+    }
+
+    // Update table number if provided (allow switching tables for dine-in)
+    if (orderData.table_number !== undefined) {
+      await client.query(
+        'UPDATE orders SET table_number = $1 WHERE id = $2',
+        [orderData.table_number || null, id]
+      );
+    } else if (orderData.tableNumber !== undefined) {
+      // Also accept camelCase from frontend just in case
+      await client.query(
+        'UPDATE orders SET table_number = $1 WHERE id = $2',
+        [orderData.tableNumber || null, id]
       );
     }
     
