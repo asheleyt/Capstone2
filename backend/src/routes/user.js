@@ -1,5 +1,17 @@
 const express = require('express');
-const { registerUser, getUsers, removeUser, editUser, loginUser, getAdminSecurityQuestions, resetAdminPassword } = require('../controllers/userController');
+const {
+  registerUser,
+  getUsers,
+  removeUser,
+  editUser,
+  loginUser,
+  getAdminSecurityQuestions,
+  resetAdminPassword,
+  getCurrentUser,
+  setupSuperAdmin,
+  resetSuperAdmin,
+  setupAdmin,
+} = require('../controllers/userController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { activityLoggers } = require('../middleware/activityLogger');
 
@@ -31,4 +43,16 @@ router.get('/security-questions/:username', getAdminSecurityQuestions);
 // POST /api/users/reset-admin-password - Reset admin password using security questions (Public endpoint)
 router.post('/reset-admin-password', resetAdminPassword);
 
-module.exports = router; 
+// GET /api/users/me - Get current user
+router.get('/me', authenticateToken, getCurrentUser);
+
+// POST /api/users/admin/security-setup - Admin sets up security Q&A
+router.post('/admin/security-setup', authenticateToken, setupAdmin);
+
+// POST /api/users/superadmin/security-setup - SuperAdmin sets up security Q&A
+router.post('/superadmin/security-setup', authenticateToken, setupSuperAdmin);
+
+// POST /api/users/superadmin/security-reset - SuperAdmin resets during setup
+router.post('/superadmin/security-reset', authenticateToken, resetSuperAdmin);
+
+module.exports = router;

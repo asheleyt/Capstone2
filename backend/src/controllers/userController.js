@@ -1,73 +1,79 @@
-const { createUser, getAllUsers, deleteUser, updateUser, findUserByUsername, getSecurityQuestions, verifySecurityAnswersAndResetPassword } = require('../models/user');
-const { getHashedAnswers } = require('../constants/securityQuestions');
+const {
+  createUser,
+  getAllUsers,
+  deleteUser,
+  updateUser,
+  findUserByUsername,
+  getSecurityQuestions,
+  verifySecurityAnswersAndResetPassword,
+  setupSuperAdminSecurity,
+  resetSuperAdminSecurity,
+  setupAdminSecurity,
+} = require('../models/user');
 const bcrypt = require('bcrypt');
 const { generateToken } = require('../middleware/auth');
 
+function trim(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeQuestionSet(questions = {}) {
+  return {
+    q1: trim(questions.q1),
+    q2: trim(questions.q2),
+    q3: trim(questions.q3),
+  };
+}
+
+function normalizeAnswerSet(answers = {}) {
+  return {
+    a1: trim(answers.a1),
+    a2: trim(answers.a2),
+    a3: trim(answers.a3),
+  };
+}
+
+function hasEmptyField(map) {
+  return Object.values(map).some(value => !value);
+}
+
+function sanitizeUser(user) {
+  if (!user) return null;
+  const {
+    password,
+    security_answer_1,
+    security_answer_2,
+    security_answer_3,
+    ...rest
+  } = user;
+  return rest;
+}
+
 async function registerUser(req, res) {
   try {
-    const { fullName, username, password, role, securityAnswers } = req.body;
+    const { fullName, username, password, role } = req.body;
     if (!fullName || !username || !password || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
-    // For admin users, validate security answers BEFORE any processing
-    if (role === 'Admin') {
-      console.log('=== ADMIN USER CREATION START ===');
-      console.log('Received request body:', req.body);
-      console.log('Security answers received:', securityAnswers);
-      
-      if (!securityAnswers || !securityAnswers.a1 || !securityAnswers.a2 || !securityAnswers.a3) {
-        console.log('❌ Missing security answers for admin user');
-        return res.status(400).json({ error: 'Security answers are required for admin users' });
-      }
-      
-      // Validate answers against predefined answers
-      const { getAnswers } = require('../constants/securityQuestions');
-      const correctAnswers = getAnswers();
-      
-      const userAnswers = {
-        a1: securityAnswers.a1.toLowerCase().trim(),
-        a2: securityAnswers.a2.toLowerCase().trim(),
-        a3: securityAnswers.a3.toLowerCase().trim()
-      };
-      
-      console.log('User answers (normalized):', userAnswers);
-      console.log('Correct answers:', correctAnswers);
-      
-      const isValid = userAnswers.a1 === correctAnswers.a1 &&
-                      userAnswers.a2 === correctAnswers.a2 &&
-                      userAnswers.a3 === correctAnswers.a3;
-      
-      console.log('Validation result:', isValid);
-      
-      if (!isValid) {
-        console.log('❌ Invalid security answers provided - REJECTING USER CREATION');
-        return res.status(400).json({ error: 'Invalid security answers' });
-      }
-      
-      console.log('✅ Security answers validation passed');
+
+    const currentUserRole = req.user?.role;
+    if (currentUserRole === 'Admin' && (role === 'Admin' || role === 'SuperAdmin')) {
+      return res.status(403).json({ error: 'Admin users cannot manage this role' });
     }
-    
-    // Hash the password
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // Get predefined security answers for admin users
-    let hashedSecurityAnswers = null;
-    if (role === 'Admin') {
-      hashedSecurityAnswers = await getHashedAnswers();
-    }
-    
+
     const user = await createUser({
-      fullName,
-      username,
+      fullName: trim(fullName),
+      username: trim(username),
       password: hashedPassword,
       role,
-      securityAnswers: hashedSecurityAnswers
+      securitySetupComplete: role === 'Admin' ? false : null,
     });
-    res.status(201).json({ message: 'User created', user: { ...user, password: undefined } });
+
+    res.status(201).json({ message: 'User created', user });
   } catch (err) {
     if (err.code === '23505') {
-      // Unique violation (username)
       return res.status(409).json({ error: 'Username already exists' });
     }
     console.error('Error creating user:', err);
@@ -87,6 +93,19 @@ async function getUsers(req, res) {
 async function removeUser(req, res) {
   try {
     const { id } = req.params;
+
+    const users = await getAllUsers();
+    const userToDelete = users.find(u => u.id == id);
+
+    if (!userToDelete) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const currentUserRole = req.user?.role;
+    if (currentUserRole === 'Admin' && (userToDelete.role === 'Admin' || userToDelete.role === 'SuperAdmin')) {
+      return res.status(403).json({ error: 'Admin users cannot manage this role' });
+    }
+
     await deleteUser(id);
     res.json({ message: 'User deleted' });
   } catch (err) {
@@ -97,53 +116,22 @@ async function removeUser(req, res) {
 async function editUser(req, res) {
   try {
     const { id } = req.params;
-    const { fullName, username, role, securityAnswers } = req.body;
-    
-    // For admin users, validate security answers BEFORE any processing
-    if (role === 'Admin') {
-      console.log('=== ADMIN USER UPDATE START ===');
-      console.log('Received request body:', req.body);
-      console.log('Security answers received:', securityAnswers);
-      
-      if (!securityAnswers || !securityAnswers.a1 || !securityAnswers.a2 || !securityAnswers.a3) {
-        console.log('❌ Missing security answers for admin user');
-        return res.status(400).json({ error: 'Security answers are required for admin users' });
-      }
-      
-      // Validate answers against predefined answers
-      const { getAnswers } = require('../constants/securityQuestions');
-      const correctAnswers = getAnswers();
-      
-      const userAnswers = {
-        a1: securityAnswers.a1.toLowerCase().trim(),
-        a2: securityAnswers.a2.toLowerCase().trim(),
-        a3: securityAnswers.a3.toLowerCase().trim()
-      };
-      
-      console.log('User answers (normalized):', userAnswers);
-      console.log('Correct answers:', correctAnswers);
-      
-      const isValid = userAnswers.a1 === correctAnswers.a1 &&
-                      userAnswers.a2 === correctAnswers.a2 &&
-                      userAnswers.a3 === correctAnswers.a3;
-      
-      console.log('Validation result:', isValid);
-      
-      if (!isValid) {
-        console.log('❌ Invalid security answers provided - REJECTING USER UPDATE');
-        return res.status(400).json({ error: 'Invalid security answers' });
-      }
-      
-      console.log('✅ Security answers validation passed');
+    const { fullName, username, role } = req.body;
+
+    if (!fullName || !username || !role) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
-    
-    // Get predefined security answers for admin users
-    let hashedSecurityAnswers = null;
-    if (role === 'Admin') {
-      hashedSecurityAnswers = await getHashedAnswers();
+
+    const currentUserRole = req.user?.role;
+    if (currentUserRole === 'Admin' && (role === 'Admin' || role === 'SuperAdmin')) {
+      return res.status(403).json({ error: 'Admin users cannot manage this role' });
     }
-    
-    const updated = await updateUser(id, { fullName, username, role, securityAnswers: hashedSecurityAnswers });
+
+    const updated = await updateUser(id, {
+      fullName: trim(fullName),
+      username: trim(username),
+      role,
+    });
     res.json({ message: 'User updated', user: updated });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update user', details: err.message });
@@ -153,10 +141,11 @@ async function editUser(req, res) {
 async function loginUser(req, res) {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
+    const normalizedUsername = trim(username);
+    if (!normalizedUsername || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
-    const user = await findUserByUsername(username);
+    const user = await findUserByUsername(normalizedUsername);
     if (!user) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
@@ -164,16 +153,14 @@ async function loginUser(req, res) {
     if (!match) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
-    
-    // Generate JWT token
-    const token = generateToken(user);
-    
-    // Remove password from user object before sending
-    const { password: _, ...userWithoutPassword } = user;
-    res.json({ 
-      message: 'Login successful', 
-      user: userWithoutPassword,
-      token: token
+
+    const sanitizedUser = sanitizeUser(user);
+    const token = generateToken(sanitizedUser);
+
+    res.json({
+      message: 'Login successful',
+      user: sanitizedUser,
+      token,
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error', details: err.message });
@@ -198,39 +185,109 @@ async function getAdminSecurityQuestions(req, res) {
 async function resetAdminPassword(req, res) {
   try {
     const { username, answers, newPassword } = req.body;
-    
+
     if (!username || !answers || !newPassword) {
       return res.status(400).json({ error: 'Username, answers, and new password are required' });
     }
-    
-    if (!answers.a1 || !answers.a2 || !answers.a3) {
+
+    const normalizedAnswers = normalizeAnswerSet(answers);
+    if (hasEmptyField(normalizedAnswers)) {
       return res.status(400).json({ error: 'All three security answers are required' });
     }
-
-    // Normalize answers (lowercase, trim) but do NOT hash
-    const normalizedAnswers = {
-      a1: answers.a1.toLowerCase().trim(),
-      a2: answers.a2.toLowerCase().trim(),
-      a3: answers.a3.toLowerCase().trim()
-    };
 
     const result = await verifySecurityAnswersAndResetPassword(username, normalizedAnswers, newPassword);
     if (!result) {
       return res.status(400).json({ error: 'Invalid security answers' });
     }
-    
+
     res.json({ message: 'Password reset successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Server error', details: err.message });
   }
 }
 
-module.exports = { 
-  registerUser, 
-  getUsers, 
-  removeUser, 
-  editUser, 
+// Get current authenticated user (without password)
+async function getCurrentUser(req, res) {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    return res.json(req.user);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+}
+
+// SuperAdmin: Setup security questions and answers
+async function setupSuperAdmin(req, res) {
+  try {
+    if (!req.user || req.user.role !== 'SuperAdmin') {
+      return res.status(403).json({ error: 'SuperAdmin access required' });
+    }
+    const normalizedQuestions = normalizeQuestionSet(req.body.questions);
+    const normalizedAnswers = normalizeAnswerSet(req.body.answers);
+    if (hasEmptyField(normalizedQuestions) || hasEmptyField(normalizedAnswers)) {
+      return res.status(400).json({ error: 'Three questions and answers are required' });
+    }
+    const updated = await setupSuperAdminSecurity(req.user.id, {
+      questions: normalizedQuestions,
+      answers: normalizedAnswers,
+    });
+    return res.json({ message: 'Security setup completed', user: updated });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to setup security', details: err.message });
+  }
+}
+
+// SuperAdmin: Reset security during setup/cancel
+async function resetSuperAdmin(req, res) {
+  try {
+    if (!req.user || req.user.role !== 'SuperAdmin') {
+      return res.status(403).json({ error: 'SuperAdmin access required' });
+    }
+    await resetSuperAdminSecurity(req.user.id);
+    return res.json({ message: 'Security reset' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reset security', details: err.message });
+  }
+}
+
+// Admin: Setup security questions and answers
+async function setupAdmin(req, res) {
+  try {
+    if (!req.user || req.user.role !== 'Admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    if (req.user.security_setup_complete) {
+      return res.status(409).json({ error: 'Security already configured' });
+    }
+
+    const normalizedQuestions = normalizeQuestionSet(req.body.questions);
+    const normalizedAnswers = normalizeAnswerSet(req.body.answers);
+
+    if (hasEmptyField(normalizedQuestions) || hasEmptyField(normalizedAnswers)) {
+      return res.status(400).json({ error: 'Three questions and answers are required' });
+    }
+
+    const updated = await setupAdminSecurity(req.user.id, {
+      questions: normalizedQuestions,
+      answers: normalizedAnswers,
+    });
+
+    return res.json({ message: 'Security setup completed', user: updated });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to setup security', details: err.message });
+  }
+}
+
+module.exports = {
+  registerUser,
+  getUsers,
+  removeUser,
+  editUser,
   loginUser,
   getAdminSecurityQuestions,
-  resetAdminPassword
-}; 
+  resetAdminPassword,
+  getCurrentUser,
+  setupSuperAdmin,
+  resetSuperAdmin,
+  setupAdmin,
+};

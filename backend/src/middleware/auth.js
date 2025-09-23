@@ -15,16 +15,22 @@ const authenticateToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    
+
     // Get user from database to ensure they still exist and get latest info
     const user = await findUserByUsername(decoded.username);
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    // Add user info to request object (excluding password)
-    const { password, ...userWithoutPassword } = user;
-    req.user = userWithoutPassword;
+    // Add user info to request object (excluding password and hashed answers)
+    const {
+      password,
+      security_answer_1,
+      security_answer_2,
+      security_answer_3,
+      ...userWithoutSensitive
+    } = user;
+    req.user = userWithoutSensitive;
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -41,11 +47,9 @@ const requireAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-  
-  if (req.user.role !== 'Admin') {
+  if (!['Admin','SuperAdmin'].includes(req.user.role)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
-  
   next();
 };
 
@@ -55,11 +59,11 @@ const requireRole = (roles) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
     }
-    
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
-    
+
     next();
   };
 };
@@ -67,10 +71,10 @@ const requireRole = (roles) => {
 // Generate JWT token
 const generateToken = (user) => {
   return jwt.sign(
-    { 
-      id: user.id, 
-      username: user.username, 
-      role: user.role 
+    {
+      id: user.id,
+      username: user.username,
+      role: user.role
     },
     JWT_SECRET,
     { expiresIn: '24h' } // Token expires in 24 hours
@@ -84,3 +88,6 @@ module.exports = {
   generateToken,
   JWT_SECRET
 };
+
+
+

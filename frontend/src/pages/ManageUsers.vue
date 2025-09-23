@@ -83,22 +83,14 @@
             
             <!-- Security Questions for Admin Users -->
             <div v-if="editUser.role === 'Admin'" class="border-t pt-4 mt-4">
-              <h3 class="text-lg font-semibold mb-4 text-gray-800">Security Questions (Admin Only)</h3>
-              <p class="text-sm text-gray-600 mb-4">Please answer these predefined security questions to update an admin account.</p>
               
               <div class="mb-4">
-                <label class="block mb-1 font-medium text-gray-800">Question 1: What is my birthday?</label>
-                <input v-model="editUser.securityAnswers.a1" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
               </div>
               
               <div class="mb-4">
-                <label class="block mb-1 font-medium text-gray-800">Question 2: Birthplace?</label>
-                <input v-model="editUser.securityAnswers.a2" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
               </div>
               
               <div class="mb-4">
-                <label class="block mb-1 font-medium text-gray-800">Question 3: My first job?</label>
-                <input v-model="editUser.securityAnswers.a3" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
               </div>
             </div>
             
@@ -142,22 +134,14 @@
             
             <!-- Security Questions for Admin Users -->
             <div v-if="newUser.role === 'Admin'" class="border-t pt-4 mt-4">
-              <h3 class="text-lg font-semibold mb-4 text-gray-800">Security Questions (Admin Only)</h3>
-              <p class="text-sm text-gray-600 mb-4">Please answer these predefined security questions to create an admin account.</p>
               
               <div class="mb-4">
-                <label class="block mb-1 font-medium text-gray-800">Question 1: What is my birthday?</label>
-                <input v-model="newUser.securityAnswers.a1" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
               </div>
               
               <div class="mb-4">
-                <label class="block mb-1 font-medium text-gray-800">Question 2: Birthplace?</label>
-                <input v-model="newUser.securityAnswers.a2" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
               </div>
               
               <div class="mb-4">
-                <label class="block mb-1 font-medium text-gray-800">Question 3: My first job?</label>
-                <input v-model="newUser.securityAnswers.a3" type="text" placeholder="Enter your answer" class="input input-bordered w-full" required />
               </div>
             </div>
             
@@ -187,25 +171,13 @@ const newUser = ref({
   fullName: '',
   username: '',
   password: '',
-  role: '',
-  securityAnswers: {
-    a1: '',
-    a2: '',
-    a3: ''
-  }
-});
+  role: '',});
 
 const editUser = ref({
   id: null,
   fullName: '',
   username: '',
-  role: '',
-  securityAnswers: {
-    a1: '',
-    a2: '',
-    a3: ''
-  }
-});
+  role: '',});
 
 const isSubmitting = ref(false);
 const formMessage = ref('');
@@ -269,11 +241,6 @@ async function submitAddUser() {
   
   // Add validation for admin users
   if (newUser.value.role === 'Admin') {
-    if (!newUser.value.securityAnswers.a1 || !newUser.value.securityAnswers.a2 || !newUser.value.securityAnswers.a3) {
-      formError.value = 'All security questions must be answered for admin users.';
-      isSubmitting.value = false;
-      return;
-    }
   }
   
   console.log('Sending user data:', newUser.value);
@@ -295,13 +262,7 @@ async function submitAddUser() {
         fullName: '', 
         username: '', 
         password: '', 
-        role: '',
-        securityAnswers: {
-          a1: '',
-          a2: '',
-          a3: ''
-        }
-      };
+        role: '',};
       await fetchUsers();
     } else {
       formError.value = data.error || 'Failed to create user.';
@@ -318,13 +279,7 @@ function openEditUser(user) {
     id: user.id,
     fullName: user.full_name,
     username: user.username,
-    role: user.role,
-    securityAnswers: {
-      a1: '',
-      a2: '',
-      a3: ''
-    }
-  };
+    role: user.role,};
   editFormMessage.value = '';
   editFormError.value = '';
   showEditUserModal.value = true;
@@ -337,11 +292,6 @@ async function submitEditUser() {
   
   // Add validation for admin users
   if (editUser.value.role === 'Admin') {
-    if (!editUser.value.securityAnswers.a1 || !editUser.value.securityAnswers.a2 || !editUser.value.securityAnswers.a3) {
-      editFormError.value = 'All security questions must be answered for admin users.';
-      isEditing.value = false;
-      return;
-    }
   }
   
   console.log('Sending edit user data:', editUser.value);
@@ -353,12 +303,9 @@ async function submitEditUser() {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json' 
       },
-      body: JSON.stringify({
-        fullName: editUser.value.fullName,
+      body: JSON.stringify({fullName: editUser.value.fullName,
         username: editUser.value.username,
-        role: editUser.value.role,
-        securityAnswers: editUser.value.role === 'Admin' ? editUser.value.securityAnswers : null
-      })
+        role: editUser.value.role})
     });
     const data = await response.json();
     if (response.ok) {
@@ -395,3 +342,5 @@ async function deleteUser(id) {
   }
 }
 </script> 
+
+

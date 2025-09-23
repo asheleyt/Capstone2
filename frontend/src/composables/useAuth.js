@@ -54,6 +54,20 @@ export function useAuth() {
     }
   };
 
+  const refreshCurrentUser = async () => {
+    if (!token.value) return null;
+    try {
+      const res = await makeAuthenticatedRequest('http://localhost:5000/api/users/me');
+      if (!res.ok) return null;
+      const me = await res.json();
+      user.value = me;
+      localStorage.setItem('user', JSON.stringify(me));
+      return me;
+    } catch (_) {
+      return null;
+    }
+  };
+
   const logout = async () => {
     // Client-only logout
     user.value = null;
@@ -128,6 +142,7 @@ export function useAuth() {
     logout,
     getAuthHeaders,
     makeAuthenticatedRequest,
+    refreshCurrentUser,
     requireAuth,
     requireAdmin,
     requireRole

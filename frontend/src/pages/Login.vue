@@ -88,26 +88,54 @@ const handleLogin = async () => {
   errorMessage.value = '';
   
   try {
-    const result = await login(formData.value.username, formData.value.password);
+    const trimmedUsername = formData.value.username.trim();
+    formData.value.username = trimmedUsername;
+
+    if (!trimmedUsername) {
+      errorMessage.value = 'Please enter your username.';
+      isLoading.value = false;
+      return;
+    }
+
+    const result = await login(trimmedUsername, formData.value.password);
+    console.log('Login result:', result);
     
     if (result.success) {
-      // Route based on user role
-      if (result.user.role === 'Admin') {
+      // Route based on user role and security setup status
+      console.log('User role:', result.user.role, 'Security setup complete:', result.user.security_setup_complete);
+      if (result.user.role === 'SuperAdmin' && !result.user.security_setup_complete) {
+        console.log('Routing to /superadmin/setup');
+        router.push('/superadmin/setup');
+      } else if (result.user.role === 'SuperAdmin' && result.user.security_setup_complete) {
+        console.log('Routing to /admin/dashboard');
         router.push('/admin/dashboard');
+      } else if (result.user.role === 'Admin') {
+        if (!result.user.security_setup_complete) {
+          console.log('Routing to /admin/security-setup');
+          router.push('/admin/security-setup');
+        } else {
+          console.log('Routing to /admin/dashboard');
+          router.push('/admin/dashboard');
+        }
       } else if (result.user.role === 'Kitchen') {
+        console.log('Routing to /kds');
         router.push('/kds');
       } else if (result.user.role === 'Cashier') {
+        console.log('Routing to /pos');
         router.push('/pos');
       } else {
+        console.log('Routing to /');
         router.push('/');
       }
     } else {
       errorMessage.value = result.error || 'Invalid username or password. Please try again.';
+      console.log('Login failed:', errorMessage.value);
     }
   } catch (err) {
     errorMessage.value = 'Network error or server not reachable.';
+    console.log('Network/login error:', err);
   } finally {
     isLoading.value = false;
   }
 };
-</script> 
+</script>

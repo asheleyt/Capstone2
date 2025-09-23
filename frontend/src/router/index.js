@@ -11,11 +11,15 @@ import OrderDemo from '../pages/OrderDemo.vue';
 import KDS from '../pages/KDS.vue';
 import OrderHistory from '../pages/OrderHistory.vue';
 import Unauthorized from '../pages/Unauthorized.vue';
+import SuperAdminSetup from '../pages/SuperAdminSetup.vue';
+import AdminSecuritySetup from '../pages/AdminSecuritySetup.vue';
 
 const routes = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: Login, meta: { requiresGuest: true } },
   { path: '/unauthorized', component: Unauthorized },
+  { path: '/superadmin/setup', component: SuperAdminSetup, meta: { requiresAuth: true } },
+  { path: '/admin/security-setup', component: AdminSecuritySetup, meta: { requiresAuth: true } },
 
   // Admin routes
   { path: '/admin/dashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },
@@ -44,7 +48,6 @@ const router = createRouter({
 
 // Route guards
 router.beforeEach((to, from, next) => {
-  // Get authentication state from localStorage directly to avoid reactivity issues
   const token = localStorage.getItem('token');
   const storedUser = localStorage.getItem('user');
   let user = null;
@@ -58,18 +61,21 @@ router.beforeEach((to, from, next) => {
   }
   
   const isAuthenticated = !!(token && user);
-  const isAdmin = user?.role === 'Admin';
+  const isAdminOrSuper = user?.role === 'Admin' || user?.role === 'SuperAdmin';
+  const isSuperAdmin = user?.role === 'SuperAdmin';
+  const isAdminOnly = user?.role === 'Admin';
+  const securitySetupComplete = user?.security_setup_complete === true;
   
-  // Check if route requires authentication
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login');
     return;
   }
-  // Check if route requires guest (not authenticated)
+
   if (to.meta.requiresGuest && isAuthenticated) {
-    // Redirect authenticated users to appropriate dashboard
     if (user?.role === 'Admin') {
-      next('/admin/dashboard');
+      next(securitySetupComplete ? '/admin/dashboard' : '/admin/security-setup');
+    } else if (user?.role === 'SuperAdmin') {
+      next(securitySetupComplete ? '/admin/dashboard' : '/superadmin/setup');
     } else if (user?.role === 'Kitchen') {
       next('/kds');
     } else if (user?.role === 'Cashier') {
@@ -79,16 +85,38 @@ router.beforeEach((to, from, next) => {
     }
     return;
   }
-  // Check if route requires admin role
-  if (to.meta.requiresAdmin && !isAdmin) {
+
+  if (to.path === '/admin/security-setup' && isAuthenticated && !isAdminOnly) {
     next('/unauthorized');
     return;
   }
-  // Check if route has specific role requirements
+
+  if (to.meta.requiresAdmin && !isAdminOrSuper) {
+    next('/unauthorized');
+    return;
+  }
+
+  if (isAuthenticated && isSuperAdmin && !securitySetupComplete &&
+      to.path !== '/superadmin/setup' &&
+      to.path !== '/login' &&
+      !to.path.startsWith('/unauthorized')) {
+    next('/superadmin/setup');
+    return;
+  }
+
+  if (isAuthenticated && isAdminOnly && !securitySetupComplete &&
+      to.path !== '/admin/security-setup' &&
+      to.path !== '/login' &&
+      !to.path.startsWith('/unauthorized')) {
+    next('/admin/security-setup');
+    return;
+  }
+
   if (to.meta.allowedRoles && !to.meta.allowedRoles.includes(user?.role)) {
     next('/unauthorized');
     return;
   }
+
   next();
 });
 
