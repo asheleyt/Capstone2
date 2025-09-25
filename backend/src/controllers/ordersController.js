@@ -24,6 +24,7 @@ async function createOrderHandler(req, res) {
     }
     
     // POS integration: enforce table availability when dine-in has a table number
+    // Allow override when sameTableOverride is true (attach to occupied table)
     if (orderData.orderType === 'dine-in' && orderData.tableNumber) {
       try {
         const { getTableByNumber } = require('../models/tables');
@@ -31,11 +32,18 @@ async function createOrderHandler(req, res) {
         if (!table) {
           return res.status(400).json({ error: 'Invalid table number' });
         }
-        if (table.status !== 'available') {
+        if (table.status !== 'available' && !orderData.sameTableOverride) {
           return res.status(409).json({ error: 'Selected table is occupied' });
+        }
+        if (orderData.sameTableOverride && orderData.sameTableNumber && String(orderData.sameTableNumber) !== String(table.table_number)) {
+          return res.status(400).json({ error: 'Same table number does not match an existing table' });
         }
       } catch (e) {
         // If tables model not available or DB error
+        console.error('Table validation error:', e.message, {
+          tableNumber: orderData.tableNumber,
+          sameTableOverride: orderData.sameTableOverride
+        });
         return res.status(500).json({ error: 'Failed to validate table status' });
       }
     }
@@ -71,7 +79,11 @@ async function createOrderHandler(req, res) {
     }
     res.status(201).json(order);
   } catch (err) {
-    console.error('Error creating order:', err);
+    console.error('Error creating order:', err?.message || err, {
+      tableNumber: req?.body?.tableNumber,
+      sameTableOverride: req?.body?.sameTableOverride,
+      orderType: req?.body?.orderType
+    });
     res.status(500).json({ error: 'Failed to create order', details: err.message });
   }
 }

@@ -65,9 +65,30 @@
             <div class="text-center">
               <div class="loading loading-spinner loading-lg"></div>
               <p class="mt-4 text-gray-600">Loading products...</p>
-            </div>
-          </div>
-          
+    </div>
+  </div>
+
+  <!-- Discount Modal -->
+  <div v-if="showDiscountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div class="bg-white rounded shadow-lg w-96 p-4">
+      <div class="text-lg font-semibold mb-2 text-gray-800">SC/PWD Discount</div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs text-gray-700">Total Customers</label>
+          <input v-model.number="totalCustomers" type="number" min="0" class="input input-bordered input-sm w-full" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-700">SC/PWD Count</label>
+          <input v-model.number="scPwdCount" type="number" min="0" class="input input-bordered input-sm w-full" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button class="btn btn-outline" @click="showDiscountModal = false">Cancel</button>
+        <button class="btn btn-primary" @click="showDiscountModal = false">Apply</button>
+      </div>
+    </div>
+  </div>
+
           <!-- Error State -->
           <div v-else-if="error" class="col-span-4 flex items-center justify-center h-64">
             <div class="text-center">
@@ -168,10 +189,18 @@
                 <span class="text-xs text-gray-400">{{ orderNotes.length }}/200</span>
               </div>
             </div>
-            <!-- Table Number Input (only for dine-in) -->
+            <!-- Table Number Input (only for dine-in) with Same Table override -->
             <div v-if="orderType === 'dine-in'" class="flex items-center gap-2 mt-2">
-              <label class="text-xs font-semibold text-gray-800" for="tableNumber">Table #</label>
-              <input id="tableNumber" v-model="tableNumber" type="text" placeholder="Enter table number" class="input input-bordered input-sm w-40 text-xs" />
+              <template v-if="!sameTableMode">
+                <label class="text-xs font-semibold text-gray-800" for="tableNumber">Table #</label>
+                <input id="tableNumber" v-model="tableNumber" type="text" placeholder="Enter table number" class="input input-bordered input-sm w-40 text-xs" />
+                <button class="btn btn-xs" @click="sameTableMode = true">Same table</button>
+              </template>
+              <template v-else>
+                <button class="btn btn-xs" @click="sameTableMode = false">Cancel</button>
+                <label class="text-xs font-semibold text-gray-800">Same Table</label>
+                <input v-model="sameTableNumber" type="text" placeholder="Enter existing table #" class="input input-bordered input-sm w-40 text-xs" />
+              </template>
             </div>
           </div>
 
@@ -206,8 +235,12 @@
               <span>₱{{ subtotal.toFixed(2) }}</span>
             </div>
             <div class="flex justify-between mb-1 text-gray-800">
-              <span>Discount tax</span>
+              <span>Discount</span>
               <span>₱{{ discount.toFixed(2) }}</span>
+            </div>
+            <div class="flex justify-between mb-1 text-gray-800">
+              <span>VAT</span>
+              <span>₱{{ vatAmount.toFixed(2) }}</span>
             </div>
             <div class="flex justify-between mb-1 text-gray-800">
               <span>Change</span>
@@ -224,7 +257,7 @@
             <div class="flex space-x-2 mb-2">
               <button @click="setOrderType('dine-in')" :class="['btn', orderType === 'dine-in' ? 'btn-primary' : '']">Dine in</button>
               <button @click="setOrderType('take-out')" :class="['btn', orderType === 'take-out' ? 'btn-primary' : '']">Take out</button>
-              <button class="btn">Discount</button>
+              <button class="btn" @click="showDiscountModal = true">Discount</button>
             </div>
             <div class="flex space-x-2">
               <button @click="clearCart" class="btn btn-outline text-red-600 border-red-600 font-bold bg-white hover:bg-red-50">Clear Cart</button>
@@ -249,12 +282,7 @@
           </svg>
         </button>
       </div>
-      <!-- Special: start a new order without assigning a table; include reference only -->
-      <div class="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">
-        <input v-model="noTableReference" type="text" placeholder="Reference table # (optional)" class="input input-bordered input-sm w-48 text-xs" />
-        <button class="btn btn-sm" @click="startNoTableOrder">New order (no table)</button>
-        <span v-if="allowNoTableNextOrder" class="text-xs text-blue-700">No-table mode ON</span>
-      </div>
+      <!-- Removed reference/new-order (no table) controls as requested -->
       
       <div class="p-4 overflow-y-auto h-full">
         <div v-if="orderHistoryLoading" class="text-center py-8">
@@ -312,7 +340,7 @@
                   <span>{{ order.order_type }}</span>
                   <span>• {{ order.payment_method }}</span>
                 </div>
-                <div v-if="order.table_number" class="text-gray-800 font-bold text-xl">Table {{ order.table_number }}</div>
+                <div v-if="order.table_number || order.tableNumber" class="text-gray-800 font-bold text-xl">Table {{ order.table_number || order.tableNumber }}</div>
               </div>
               <div class="text-xs text-gray-500 mt-1">
                 {{ new Date(order.created_at).toLocaleString() }}
@@ -408,6 +436,9 @@ const noTableReference = ref('');
 
 // Order History
 const showOrderHistory = ref(false);
+const sameTableMode = ref(false);
+const sameTableNumber = ref("");
+  const showDiscountModal = ref(false);
 const { orders: orderHistory, loading: orderHistoryLoading, error: orderHistoryError, fetchOrders: fetchOrderHistory } = useOrders();
 
 // Quick test print using window.print with fallback to local service
@@ -571,16 +602,24 @@ function addNoteTemplate(template) {
 
 async function checkout() {
   if (cart.value.length === 0) return;
-  if (orderType.value === 'dine-in' && !tableNumber.value.trim() && !allowNoTableNextOrder.value) {
+  if (
+    orderType.value === 'dine-in'
+    && !sameTableMode.value
+    && !tableNumber.value.trim()
+  ) {
     alert('Please enter a table number for dine-in orders.');
     return;
   }
+  if (
+    orderType.value === 'dine-in'
+    && sameTableMode.value
+    && !sameTableNumber.value.trim()
+  ) {
+    alert('Please enter the same table number.');
+    return;
+  }
   // Create order object with notes and table number
-  // If placing a no-table order, include a reference prefix in notes
-  const referencePrefix = allowNoTableNextOrder.value && noTableReference.value.trim()
-    ? `[Ref table: ${noTableReference.value.trim()}] `
-    : '';
-  const notesToSend = `${referencePrefix}${orderNotes.value.trim()}`.trim();
+  const notesToSend = `${orderNotes.value.trim()}`.trim();
   // Snapshot cart now for printing (before we clear it)
   const cartSnapshot = cart.value.map(i => ({
     name: i.name,
@@ -602,11 +641,21 @@ async function checkout() {
     items: cart.value.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
     paymentMethod: selectedPaymentMethod.value,
     orderType: orderType.value,
-    tableNumber: orderType.value === 'dine-in' ? (allowNoTableNextOrder.value ? '' : (tableNumber.value || '').trim()) : '',
+    tableNumber: orderType.value === 'dine-in'
+      ? (sameTableMode.value
+          ? (sameTableNumber.value || '').trim()  // ensure table shown in history
+          : (tableNumber.value || '').trim())
+      : '',
+    sameTableNumber: sameTableMode.value ? (sameTableNumber.value || '').trim() : '',
+    sameTableOverride: Boolean(sameTableMode.value),
     notes: notesToSend,
     subtotal: Number(subtotal.value),
-    discount: 0,
+    discount: Number(discount.value),
+    vat: Number(vatAmount.value),
     total: Number(total.value),
+    totalCustomers: Number(totalCustomers.value || 0),
+    pwdCount: Number(pwdCount.value || 0),
+    seniorCount: Number(seniorCount.value || 0),
     amountReceived: Number(totalAmountReceived.value || 0),
     changeAmount: Number(change.value || 0)
   };
@@ -632,10 +681,11 @@ async function checkout() {
         const data = await response.json();
         serverMsg = data?.error || data?.message || JSON.stringify(data);
       } catch (_) {
-        serverMsg = await response.text();
+        try { serverMsg = await response.text(); } catch {}
       }
       console.error('Order creation failed:', response.status, serverMsg);
-      throw new Error(`HTTP ${response.status}: ${serverMsg}`);
+      alert(`Checkout failed (${response.status}).\n${serverMsg}`);
+      return;
     }
     const result = await response.json();
     console.log('Order created:', result);
@@ -652,7 +702,8 @@ async function checkout() {
         notes: order.notes,
         items: cartSnapshot,
         subtotal: subtotal.value,
-        discount: 0,
+        discount: discount.value,
+        vat: vatAmount.value,
         total: total.value,
         paymentMethod: selectedPaymentMethod.value,
         amountReceived: totalAmountReceived.value,
@@ -677,6 +728,11 @@ async function checkout() {
     alert(`Order #${result.order_number} placed successfully!${tableText}${notesText}`);
     clearCart();
     tableNumber.value = '';
+    // Reset discount-related inputs so next order doesn't carry over
+    totalCustomers.value = 0;
+    pwdCount.value = 0;
+    seniorCount.value = 0;
+    showDiscountModal.value = false;
     // Signal tables page to refresh immediately
     try { localStorage.setItem('tables_refresh', String(Date.now())); } catch (_) {}
     
@@ -685,11 +741,12 @@ async function checkout() {
       await fetchOrderHistory();
     }
     // Reset no-table mode after a successful order
-    allowNoTableNextOrder.value = false;
-    noTableReference.value = '';
+    // Reset same-table mode
+    sameTableMode.value = false;
+    sameTableNumber.value = '';
   } catch (error) {
     console.error('Error creating order:', error);
-    alert('Failed to place order. Please try again.');
+    alert(`Failed to place order. ${error?.message || ''}`.trim());
   }
 }
 
@@ -698,12 +755,57 @@ const subtotal = computed(() => {
   return cart.value.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 });
 
+// Inputs for counts
+const totalCustomers = ref(0);
+const pwdCount = ref(0);
+  const seniorCount = ref(0);
+  const scPwdCount = computed({
+    get: () => (Number(pwdCount.value||0) + Number(seniorCount.value||0)),
+    set: (v) => {
+      // split into pwd and senior in a neutral way (all in pwd)
+      pwdCount.value = Number(v)||0;
+      seniorCount.value = 0;
+    }
+  });
+
+// Config
+const VAT_RATE = 0.12;
+const DISCOUNT_RATE = 0.20; // 20% for PWD/Senior on VAT-exempt base
+
+// Compute discount per PWD/Senior head sharing equally in the bill
 const discount = computed(() => {
-  return 0; // You can implement discount logic here
+  const eligibleHeads = Math.max(0, Number(pwdCount.value || 0) + Number(seniorCount.value || 0));
+  const heads = Math.max(1, Number(totalCustomers.value || 0));
+  if (eligibleHeads <= 0 || subtotal.value <= 0) return 0;
+  const perHeadGross = subtotal.value / heads;
+  const perHeadVatExempt = perHeadGross / (1 + VAT_RATE);
+  const perHeadDiscount = perHeadVatExempt * DISCOUNT_RATE;
+  return perHeadDiscount * eligibleHeads;
+});
+
+const vatAmount = computed(() => {
+  const heads = Math.max(1, Number(totalCustomers.value || 0));
+  const eligibleHeads = Math.max(0, Number(pwdCount.value || 0) + Number(seniorCount.value || 0));
+  const nonEligibleHeads = Math.max(0, heads - eligibleHeads);
+  if (subtotal.value <= 0) return 0;
+  const perHeadGross = subtotal.value / heads;
+  const nonEligibleGross = perHeadGross * nonEligibleHeads;
+  const baseForVat = nonEligibleGross / (1 + VAT_RATE);
+  return baseForVat * VAT_RATE;
 });
 
 const total = computed(() => {
-  return subtotal.value - discount.value;
+  const heads = Math.max(1, Number(totalCustomers.value || 0));
+  if (subtotal.value <= 0 || heads <= 0) return 0;
+  const eligibleHeads = Math.max(0, Number(pwdCount.value || 0) + Number(seniorCount.value || 0));
+  const perHeadGross = subtotal.value / heads;
+  const eligibleGross = perHeadGross * eligibleHeads;
+  const eligibleBase = eligibleGross / (1 + VAT_RATE);
+  const eligibleAfterDiscount = eligibleBase * (1 - DISCOUNT_RATE);
+  const nonEligibleGross = subtotal.value - eligibleGross;
+  const nonEligibleBase = nonEligibleGross / (1 + VAT_RATE);
+  const nonEligibleVat = nonEligibleBase * VAT_RATE;
+  return eligibleAfterDiscount + nonEligibleBase + nonEligibleVat;
 });
 
 const change = computed(() => {
@@ -732,7 +834,7 @@ const editOrderItems = ref([]);
 const editOrderNotes = ref('');
 const editTableNumber = ref('');
 const editOrderLoading = ref(false);
-const editOrderError = ref('');
+  const editOrderError = ref('');
 const selectedAddProductId = ref("");
 const productsNotInEditOrder = computed(() => {
   const ids = editOrderItems.value.map(i => i.product_id || i.id);
