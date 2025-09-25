@@ -8,6 +8,7 @@ const userRoutes = require('./routes/user');
 const salesRoutes = require('./routes/sales');
 const inventoryRoutes = require('./routes/inventory');
 const ordersRoutes = require('./routes/orders');
+const tablesRoutes = require('./routes/tables');
 const activityLogsRoutes = require('./routes/activityLogs');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
@@ -33,6 +34,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/activity-logs', activityLogsRoutes);
+app.use('/api/tables', tablesRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend is running!');
@@ -50,6 +52,8 @@ async function startServer() {
     console.log('Inventory tables initialized');
     
     await initOrdersTables();
+    const { initTablesTable } = require('./models/tables');
+    await initTablesTable();
     console.log('Orders tables initialized');
     
     await initializeSampleProducts();

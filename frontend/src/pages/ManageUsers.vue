@@ -77,6 +77,7 @@
                 <option value="">Select Role</option>
                 <option value="Cashier">Cashier</option>
                 <option value="Kitchen">Kitchen</option>
+                <option value="Server">Server</option>
                 <option value="Admin">Admin</option>
               </select>
             </div>
@@ -128,6 +129,7 @@
                 <option value="">Select Role</option>
                 <option value="Cashier">Cashier</option>
                 <option value="Kitchen">Kitchen</option>
+                <option value="Server">Server</option>
                 <option value="Admin">Admin</option>
               </select>
             </div>

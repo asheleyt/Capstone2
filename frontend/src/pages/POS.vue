@@ -170,7 +170,7 @@
             <!-- Table Number Input (only for dine-in) -->
             <div v-if="orderType === 'dine-in'" class="flex items-center gap-2 mt-2">
               <label class="text-xs font-semibold text-gray-800" for="tableNumber">Table #</label>
-              <input id="tableNumber" v-model="tableNumber" type="text" placeholder="Enter table number" class="input input-bordered input-sm w-24 text-xs" />
+              <input id="tableNumber" v-model="tableNumber" type="text" placeholder="Enter table number" class="input input-bordered input-sm w-40 text-xs" />
             </div>
           </div>
 
@@ -247,6 +247,12 @@
             <path d="M18 6L6 18M6 6l12 12"/>
           </svg>
         </button>
+      </div>
+      <!-- Special: start a new order without assigning a table; include reference only -->
+      <div class="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">
+        <input v-model="noTableReference" type="text" placeholder="Reference table # (optional)" class="input input-bordered input-sm w-48 text-xs" />
+        <button class="btn btn-sm" @click="startNoTableOrder">New order (no table)</button>
+        <span v-if="allowNoTableNextOrder" class="text-xs text-blue-700">No-table mode ON</span>
       </div>
       
       <div class="p-4 overflow-y-auto h-full">
@@ -394,6 +400,9 @@ const orderType = ref('dine-in');
 const totalAmountReceived = ref(0);
 const orderNotes = ref('');
 const tableNumber = ref('');
+// Special case: allow placing a dine-in order without assigning a table number
+const allowNoTableNextOrder = ref(false);
+const noTableReference = ref('');
 
 // Order History
 const showOrderHistory = ref(false);
@@ -513,11 +522,18 @@ function clearCart() {
   totalAmountReceived.value = 0;
   orderNotes.value = '';
   tableNumber.value = '';
+  allowNoTableNextOrder.value = false;
+  noTableReference.value = '';
 }
 
 function setOrderType(type) {
   orderType.value = type;
   if (type === 'take-out') tableNumber.value = '';
+}
+
+function startNoTableOrder() {
+  orderType.value = 'dine-in';
+  allowNoTableNextOrder.value = true;
 }
 
 function addNoteTemplate(template) {
@@ -532,17 +548,22 @@ function addNoteTemplate(template) {
 
 async function checkout() {
   if (cart.value.length === 0) return;
-  if (orderType.value === 'dine-in' && !tableNumber.value.trim()) {
+  if (orderType.value === 'dine-in' && !tableNumber.value.trim() && !allowNoTableNextOrder.value) {
     alert('Please enter a table number for dine-in orders.');
     return;
   }
   // Create order object with notes and table number
+  // If placing a no-table order, include a reference prefix in notes
+  const referencePrefix = allowNoTableNextOrder.value && noTableReference.value.trim()
+    ? `[Ref table: ${noTableReference.value.trim()}] `
+    : '';
+  const notesToSend = `${referencePrefix}${orderNotes.value.trim()}`.trim();
   const order = {
     items: cart.value,
     paymentMethod: selectedPaymentMethod.value,
     orderType: orderType.value,
-    tableNumber: orderType.value === 'dine-in' ? tableNumber.value.trim() : '',
-    notes: orderNotes.value.trim(),
+    tableNumber: orderType.value === 'dine-in' ? (allowNoTableNextOrder.value ? '' : (tableNumber.value || '').trim()) : '',
+    notes: notesToSend,
     subtotal: subtotal.value,
     total: total.value,
     amountReceived: totalAmountReceived.value,
@@ -571,11 +592,16 @@ async function checkout() {
     alert(`Order #${result.order_number} placed successfully!${tableText}${notesText}`);
     clearCart();
     tableNumber.value = '';
+    // Signal tables page to refresh immediately
+    try { localStorage.setItem('tables_refresh', String(Date.now())); } catch (_) {}
     
     // Refresh order history if it's open
     if (showOrderHistory.value) {
       await fetchOrderHistory();
     }
+    // Reset no-table mode after a successful order
+    allowNoTableNextOrder.value = false;
+    noTableReference.value = '';
   } catch (error) {
     console.error('Error creating order:', error);
     alert('Failed to place order. Please try again.');
@@ -708,6 +734,8 @@ async function submitEditOrder() {
     alert('Order updated successfully.');
     showEditModal.value = false;
     fetchOrderHistory();
+    // Signal tables page to refresh immediately
+    try { localStorage.setItem('tables_refresh', String(Date.now())); } catch (_) {}
   } catch (e) {
     editOrderError.value = e.message;
   } finally {

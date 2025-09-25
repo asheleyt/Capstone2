@@ -23,7 +23,34 @@ async function createOrderHandler(req, res) {
       return res.status(400).json({ error: 'Order total must be 0 or greater' });
     }
     
+    // POS integration: enforce table availability when dine-in has a table number
+    if (orderData.orderType === 'dine-in' && orderData.tableNumber) {
+      try {
+        const { getTableByNumber } = require('../models/tables');
+        const table = await getTableByNumber(parseInt(orderData.tableNumber, 10));
+        if (!table) {
+          return res.status(400).json({ error: 'Invalid table number' });
+        }
+        if (table.status !== 'available') {
+          return res.status(409).json({ error: 'Selected table is occupied' });
+        }
+      } catch (e) {
+        // If tables model not available or DB error
+        return res.status(500).json({ error: 'Failed to validate table status' });
+      }
+    }
+
     const order = await createOrder(orderData);
+
+    // Auto-occupy the table if this is a dine-in order with a table number
+    if (orderData.orderType === 'dine-in' && orderData.tableNumber) {
+      try {
+        const { setTableStatus } = require('../models/tables');
+        await setTableStatus(parseInt(orderData.tableNumber, 10), 'occupied');
+      } catch (e) {
+        console.warn('Failed to set table to occupied after order creation:', e.message);
+      }
+    }
 
     // Decrement inventory stock per item (FIFO across batches)
     try {
@@ -140,6 +167,27 @@ async function updateOrderHandler(req, res) {
       return res.status(400).json({ error: 'Order must contain at least one item' });
     }
     
+    // If editing table number, validate availability (accept snake_case or camelCase)
+    const incomingTable = orderData.table_number ?? orderData.tableNumber;
+    if (incomingTable !== undefined && incomingTable !== null && String(incomingTable).trim() !== '') {
+      const tableNum = parseInt(String(incomingTable).trim(), 10);
+      if (Number.isNaN(tableNum)) {
+        return res.status(400).json({ error: 'Invalid table number' });
+      }
+      try {
+        const { getTableByNumber } = require('../models/tables');
+        const table = await getTableByNumber(tableNum);
+        if (!table) {
+          return res.status(400).json({ error: 'Invalid table number' });
+        }
+        if (table.status !== 'available') {
+          return res.status(409).json({ error: 'Selected table is occupied' });
+        }
+      } catch (e) {
+        return res.status(500).json({ error: 'Failed to validate table status' });
+      }
+    }
+
     const order = await updateOrder(id, orderData);
     
     if (!order) {
@@ -148,6 +196,14 @@ async function updateOrderHandler(req, res) {
     
     console.log('Order updated successfully:', order);
     
+    // After successful update, set table to occupied if provided (snake_case or camelCase)
+    if (incomingTable !== undefined && incomingTable !== null && String(incomingTable).trim() !== '') {
+      try {
+        const { setTableStatus } = require('../models/tables');
+        await setTableStatus(parseInt(String(incomingTable).trim(), 10), 'occupied');
+      } catch (_) {}
+    }
+
     // Emit updated order to KDS via socket.io
     const io = req.app.get('io');
     if (io) {

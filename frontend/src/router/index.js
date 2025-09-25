@@ -9,6 +9,7 @@ import POS from '../pages/POS.vue';
 import KitchenOrderHistory from '../pages/KitchenOrderHistory.vue';
 import OrderDemo from '../pages/OrderDemo.vue';
 import KDS from '../pages/KDS.vue';
+import ServerTables from '../pages/ServerTables.vue';
 import OrderHistory from '../pages/OrderHistory.vue';
 import Unauthorized from '../pages/Unauthorized.vue';
 import SuperAdminSetup from '../pages/SuperAdminSetup.vue';
@@ -36,6 +37,9 @@ const routes = [
   { path: '/kitchen/pos', component: POS, meta: { requiresAuth: true, allowedRoles: ['Kitchen', 'Admin'] } },
   { path: '/kitchen/order-history', component: KitchenOrderHistory, meta: { requiresAuth: true, allowedRoles: ['Kitchen', 'Admin'] } },
   { path: '/kds', component: KDS, meta: { requiresAuth: true, allowedRoles: ['Kitchen', 'Admin'] } },
+
+  // Server routes
+  { path: '/server/tables', component: ServerTables, meta: { requiresAuth: true, allowedRoles: ['Server', 'Admin'] } },
 
   // Demo route (accessible to all authenticated users)
   { path: '/demo', component: OrderDemo, meta: { requiresAuth: true } },
@@ -80,6 +84,8 @@ router.beforeEach((to, from, next) => {
       next('/kds');
     } else if (user?.role === 'Cashier') {
       next('/pos');
+    } else if (user?.role === 'Server') {
+      next('/server/tables');
     } else {
       next('/');
     }

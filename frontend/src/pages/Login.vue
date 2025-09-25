@@ -123,6 +123,9 @@ const handleLogin = async () => {
       } else if (result.user.role === 'Cashier') {
         console.log('Routing to /pos');
         router.push('/pos');
+      } else if (result.user.role === 'Server') {
+        console.log('Routing to /server/tables');
+        router.push('/server/tables');
       } else {
         console.log('Routing to /');
         router.push('/');

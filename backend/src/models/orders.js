@@ -269,17 +269,26 @@ async function updateOrder(id, orderData) {
     }
 
     // Update table number if provided (allow switching tables for dine-in)
-    if (orderData.table_number !== undefined) {
-      await client.query(
-        'UPDATE orders SET table_number = $1 WHERE id = $2',
-        [orderData.table_number || null, id]
-      );
-    } else if (orderData.tableNumber !== undefined) {
-      // Also accept camelCase from frontend just in case
-      await client.query(
-        'UPDATE orders SET table_number = $1 WHERE id = $2',
-        [orderData.tableNumber || null, id]
-      );
+    const incomingTable = orderData.table_number !== undefined ? orderData.table_number : orderData.tableNumber;
+    if (incomingTable !== undefined) {
+      const value = (incomingTable === null || String(incomingTable).trim() === '') ? null : parseInt(String(incomingTable).trim(), 10);
+      if (value !== null && Number.isNaN(value)) {
+        throw new Error('Invalid table number');
+      }
+      if (value !== null) {
+        // Validate against dining_tables to prevent assigning to occupied
+        const tRes = await client.query('SELECT status FROM dining_tables WHERE table_number = $1', [value]);
+        if (tRes.rows.length === 0) {
+          throw new Error('Invalid table number');
+        }
+        if (tRes.rows[0].status !== 'available') {
+          throw new Error('Selected table is occupied');
+        }
+      }
+      await client.query('UPDATE orders SET table_number = $1 WHERE id = $2', [value, id]);
+      if (value !== null) {
+        await client.query('UPDATE dining_tables SET status = \'occupied\', updated_at = NOW() WHERE table_number = $1', [value]);
+      }
     }
     
     // If items are provided, update them
