@@ -33,6 +33,7 @@
           />
         </div>
         <div class="flex space-x-3 items-center">
+          <button @click="printHello" class="btn">Print Hello</button>
           <button @click="handleLogout" class="btn ml-4">Logout</button>
         </div>
       </header>
@@ -386,6 +387,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrders } from '../composables/useOrders';
+import { printReceiptBrowser, printReceipt, printTextBrowser, printText } from '../composables/usePrinter';
 
 const router = useRouter();
 const products = ref([]);
@@ -407,6 +409,27 @@ const noTableReference = ref('');
 // Order History
 const showOrderHistory = ref(false);
 const { orders: orderHistory, loading: orderHistoryLoading, error: orderHistoryError, fetchOrders: fetchOrderHistory } = useOrders();
+
+// Quick test print using window.print with fallback to local service
+async function printHello() {
+  let printed = false;
+  try {
+    await printTextBrowser('Hello from the POS!', { title: 'Test Print' });
+    printed = true;
+  } catch (browserErr) {
+    console.warn('Browser print failed, falling back to printer service', browserErr);
+    try {
+      await printText('Hello from the POS!');
+      printed = true;
+    } catch (serviceErr) {
+      console.error('Print failed', serviceErr);
+      alert('Print failed: ' + (serviceErr?.message || serviceErr));
+    }
+  }
+  if (printed) {
+    alert('Print dialog opened. Select your thermal printer if prompted.');
+  }
+}
 
 // Payment methods
 const paymentMethods = ['Cash', 'maya', 'GCash'];
@@ -558,20 +581,44 @@ async function checkout() {
     ? `[Ref table: ${noTableReference.value.trim()}] `
     : '';
   const notesToSend = `${referencePrefix}${orderNotes.value.trim()}`.trim();
+  // Snapshot cart now for printing (before we clear it)
+  const cartSnapshot = cart.value.map(i => ({
+    name: i.name,
+    qty: i.quantity,
+    price: i.price
+  }));
+
+  const itemsPayload = cart.value.map(i => ({
+    product_id: Number(i.id),
+    quantity: Number(i.quantity),
+    price: Number(i.price)
+  }));
+
+  // Some backends expect `order_items` specifically
+  const orderItemsPayload = itemsPayload.map(it => ({ ...it }));
+
+  // Backend createOrder expects camelCase keys and item fields: id,name,quantity,price
   const order = {
-    items: cart.value,
+    items: cart.value.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
     paymentMethod: selectedPaymentMethod.value,
     orderType: orderType.value,
     tableNumber: orderType.value === 'dine-in' ? (allowNoTableNextOrder.value ? '' : (tableNumber.value || '').trim()) : '',
     notes: notesToSend,
-    subtotal: subtotal.value,
-    total: total.value,
-    amountReceived: totalAmountReceived.value,
-    changeAmount: change.value
+    subtotal: Number(subtotal.value),
+    discount: 0,
+    total: Number(total.value),
+    amountReceived: Number(totalAmountReceived.value || 0),
+    changeAmount: Number(change.value || 0)
   };
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:5000/api/orders', {
+    if (!token) {
+      alert('You are not logged in. Please log in again.');
+      router.push('/login');
+      return;
+    }
+    const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const response = await fetch(`${BASE_URL}/api/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -580,14 +627,52 @@ async function checkout() {
       body: JSON.stringify(order)
     });
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Order creation failed:', errorText);
-      throw new Error('Failed to create order: ' + errorText);
+      let serverMsg = 'Unknown error';
+      try {
+        const data = await response.json();
+        serverMsg = data?.error || data?.message || JSON.stringify(data);
+      } catch (_) {
+        serverMsg = await response.text();
+      }
+      console.error('Order creation failed:', response.status, serverMsg);
+      throw new Error(`HTTP ${response.status}: ${serverMsg}`);
     }
     const result = await response.json();
     console.log('Order created:', result);
     // Show success message with order number, table, and notes
     const tableText = order.tableNumber ? `\nTable: ${order.tableNumber}` : '';
+    
+    // Print receipt to 58mm thermal via browser
+    try {
+      await printReceiptBrowser({
+        header: 'Receipt',
+        businessName: '',
+        orderNumber: result?.order_number || String(result?.id || ''),
+        tableNumber: order.tableNumber,
+        notes: order.notes,
+        items: cartSnapshot,
+        subtotal: subtotal.value,
+        discount: 0,
+        total: total.value,
+        paymentMethod: selectedPaymentMethod.value,
+        amountReceived: totalAmountReceived.value,
+        changeAmount: change.value,
+        timestamp: result?.created_at || new Date(),
+        footerLines: ['Thank you!']
+      });
+    } catch (printErr) {
+      console.warn('Browser receipt print failed:', printErr);
+      // Fallback to local printer service if browser print fails
+      try {
+        await printReceipt({
+          header: `Order #${result?.order_number || result?.id || ''}`,
+          items: cartSnapshot,
+          total: total.value,
+        });
+      } catch (serviceErr) {
+        console.error('Service receipt print failed:', serviceErr);
+      }
+    }
     const notesText = order.notes ? `\nNotes: ${order.notes}` : '';
     alert(`Order #${result.order_number} placed successfully!${tableText}${notesText}`);
     clearCart();
