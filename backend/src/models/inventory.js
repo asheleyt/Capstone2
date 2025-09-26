@@ -107,12 +107,29 @@ async function deleteInventoryItem(id) {
 }
 
 // BATCH CRUD
-async function addBatch({ itemId, quantity, expiry }) {
-  const result = await pool.query(
-    `INSERT INTO inventory_batches (item_id, quantity, expiry, unit_amount, unit_label)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [itemId, quantity, expiry, null, null]
-  );
+async function addBatch({ itemId, quantity, expiry, unitAmount = null, unitLabel = null }) {
+  // Normalize expiry to DATE (YYYY-MM-DD) to avoid DB driver casting issues
+  const expiryDate = expiry instanceof Date ? expiry.toISOString().slice(0, 10) : String(expiry).slice(0, 10);
+  // Backward compatibility: some DBs may not have unit_amount/unit_label columns
+  let result;
+  try {
+    result = await pool.query(
+      `INSERT INTO inventory_batches (item_id, quantity, expiry, unit_amount, unit_label)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [itemId, quantity, expiryDate, unitAmount, unitLabel]
+    );
+  } catch (e) {
+    if (/column \"unit_amount\" of relation \"inventory_batches\" does not exist/i.test(e.message)) {
+      // Fallback to legacy schema without these columns
+      result = await pool.query(
+        `INSERT INTO inventory_batches (item_id, quantity, expiry)
+         VALUES ($1, $2, $3) RETURNING *`,
+        [itemId, quantity, expiryDate]
+      );
+    } else {
+      throw e;
+    }
+  }
   return result.rows[0];
 }
 

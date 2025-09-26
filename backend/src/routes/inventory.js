@@ -31,4 +31,11 @@ router.get('/search', authenticateToken, requireAdmin, searchInventory);
 // Get products for POS (Public - no authentication required)
 router.get('/pos', getProductsForPOSHandler);
 
+// Smoke route to verify date parsing
+router.get('/smoke/parse-date', (req, res) => {
+  const { value } = req.query;
+  const normalized = value ? (value instanceof Date ? value.toISOString().slice(0,10) : String(value).slice(0,10)) : null;
+  res.json({ input: value || null, normalized });
+});
+
 module.exports = router; 

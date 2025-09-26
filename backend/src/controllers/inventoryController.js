@@ -72,7 +72,14 @@ async function deleteInventoryItemHandler(req, res) {
 async function addBatchHandler(req, res) {
   try {
     const { itemId, quantity, expiry, unitAmount, unitLabel } = req.body;
-    const batch = await addBatch({ itemId, quantity, expiry, unitAmount, unitLabel });
+    if (!itemId) throw new Error('itemId is required');
+    if (!quantity || quantity <= 0) throw new Error('quantity must be > 0');
+    if (!expiry) throw new Error('expiry is required');
+    const parsedId = Number(itemId);
+    const parsedQty = Number(quantity);
+    if (!Number.isInteger(parsedId)) throw new Error('itemId must be an integer');
+    if (!Number.isInteger(parsedQty)) throw new Error('quantity must be an integer');
+    const batch = await addBatch({ itemId: parsedId, quantity: parsedQty, expiry, unitAmount, unitLabel });
     res.status(201).json(batch);
   } catch (err) {
     res.status(500).json({ error: 'Failed to add batch', details: err.message });
