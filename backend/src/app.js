@@ -26,7 +26,10 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // Change this to your frontend URL if different
+  credentials: true
+}));
 app.use(express.json());
 
 app.use('/api/users', userRoutes);

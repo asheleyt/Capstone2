@@ -513,6 +513,33 @@ async function downloadSalesReport() {
   }
 }
 
+async function downloadSummaryReport() {
+  try {
+    const response = await fetch('http://localhost:5000/api/sales/report?reportType=summarized', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to generate summarized report');
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `summary_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('Error downloading summarized report:', error);
+    alert('Failed to download summarized report. Please try again.');
+  }
+}
+
 function clearDateFilter() {
   selectedDate.value = null;
 }

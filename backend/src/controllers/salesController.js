@@ -455,8 +455,8 @@ async function generateSalesReport(req, res) {
         worksheet.addRow({
           date: summary.date,
           totalOrders: summary.totalOrders,
-          totalRevenue: `₱${summary.totalRevenue.toFixed(2)}`,
-          avgOrderValue: `₱${(summary.totalRevenue / summary.totalOrders).toFixed(2)}`
+          totalRevenue: `₱${(summary.totalRevenue || 0).toFixed(2)}`,
+          avgOrderValue: `₱${((summary.totalRevenue || 0) / (summary.totalOrders || 1)).toFixed(2)}`
         });
       });
 
@@ -484,7 +484,7 @@ async function generateSalesReport(req, res) {
           time: order.time,
           table: order.table,
           items: itemsList,
-          total: `₱${order.total.toFixed(2)}`,
+          total: `₱${(order.total || 0).toFixed(2)}`,
           status: order.status
         });
       });
@@ -526,8 +526,8 @@ async function generateSalesReport(req, res) {
       itemWorksheet.addRow({
         name: item.name,
         totalQuantity: item.totalQuantity,
-        totalRevenue: `₱${item.totalRevenue.toFixed(2)}`,
-        averagePrice: `₱${item.averagePrice.toFixed(2)}`
+        totalRevenue: `₱${(item.totalRevenue || 0).toFixed(2)}`,
+        averagePrice: `₱${(item.averagePrice || 0).toFixed(2)}`
       });
     });
 
@@ -560,8 +560,8 @@ async function generateSalesReport(req, res) {
     summaryWorksheet.addRow([]);
     summaryWorksheet.addRow(['Metric', 'Value']);
     summaryWorksheet.addRow(['Total Orders', totalOrders]);
-    summaryWorksheet.addRow(['Total Revenue', `₱${totalRevenue.toFixed(2)}`]);
-    summaryWorksheet.addRow(['Average Order Value', `₱${averageOrderValue.toFixed(2)}`]);
+    summaryWorksheet.addRow(['Total Revenue', `₱${(totalRevenue || 0).toFixed(2)}`]);
+    summaryWorksheet.addRow(['Average Order Value', `₱${(averageOrderValue || 0).toFixed(2)}`]);
     summaryWorksheet.addRow(['Total Items Sold', totalItemsSold]);
     summaryWorksheet.addRow(['Unique Items', uniqueItems.size]);
     summaryWorksheet.addRow(['Date Range', `${startDate || 'All'} to ${endDate || 'All'}`]);
@@ -590,7 +590,7 @@ async function generateSalesReport(req, res) {
 
     // Add totals row for detailed reports
     if (reportType === 'detailed') {
-      const totalRevenue = filteredData.reduce((sum, order) => sum + order.total, 0);
+      const totalRevenue = filteredData.reduce((sum, order) => sum + (order.total || 0), 0);
       const totalOrders = filteredData.length;
       
       worksheet.addRow({}); // Empty row

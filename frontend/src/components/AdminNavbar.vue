@@ -58,26 +58,49 @@ async function downloadReport(reportType) {
   try {
     let url = 'http://localhost:5000/api/sales/report?reportType=' + reportType;
     
-    // Add date parameters based on report type
+    // Add date parameters for all report types except 'today'
     if (reportType === 'today') {
       const today = new Date().toISOString().split('T')[0];
       url += `&startDate=${today}&endDate=${today}`;
+    } else {
+      // Default: last 30 days for detailed and summary reports
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 29);
+      const startDate = start.toISOString().split('T')[0];
+      const endDate = end.toISOString().split('T')[0];
+      url += `&startDate=${startDate}&endDate=${endDate}`;
     }
+    
+    console.log('Downloading report:', reportType, 'URL:', url);
+    
+    const token = localStorage.getItem('token');
+    console.log('Token exists:', !!token);
     
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
     if (!response.ok) {
-      throw new Error('Failed to generate report');
+      const errorText = await response.text();
+      console.error('Response error:', errorText);
+      throw new Error(`Failed to generate report: ${response.status} - ${errorText}`);
     }
 
     // Get the blob from the response
     const blob = await response.blob();
+    console.log('Blob size:', blob.size, 'bytes');
+    
+    if (blob.size === 0) {
+      throw new Error('Empty file received');
+    }
     
     // Create a download link
     const downloadUrl = window.URL.createObjectURL(blob);
@@ -97,7 +120,7 @@ async function downloadReport(reportType) {
 
   } catch (error) {
     console.error('Error downloading sales report:', error);
-    alert('Failed to download sales report. Please try again.');
+    alert(`Failed to download sales report: ${error.message}`);
   }
 }
 
