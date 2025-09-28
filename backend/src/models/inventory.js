@@ -55,6 +55,14 @@ async function initInventoryTables() {
     `);
 
     console.log('Inventory tables initialized successfully');
+
+    // Add archived column if it doesn't exist
+    try {
+      await pool.query("ALTER TABLE inventory_items ADD COLUMN archived BOOLEAN DEFAULT FALSE");
+      console.log('Archived column added to inventory_items table');
+    } catch (e) {
+      console.log('Archived column already exists');
+    }
   } catch (error) {
     console.error('Error initializing inventory tables:', error);
     throw error;
@@ -80,7 +88,7 @@ async function findInventoryItemByNameAndType(name, type) {
 }
 
 async function getAllInventoryItems() {
-  const result = await pool.query('SELECT * FROM inventory_items ORDER BY id ASC');
+  const result = await pool.query('SELECT * FROM inventory_items WHERE archived = FALSE ORDER BY id ASC');
   return result.rows;
 }
 
@@ -105,6 +113,39 @@ async function updateInventoryItem(id, fields) {
 async function deleteInventoryItem(id) {
   await pool.query('DELETE FROM inventory_items WHERE id = $1', [id]);
 }
+
+// Helper checks used before deleting items
+async function countBatchesForItem(itemId) {
+  const res = await pool.query('SELECT COUNT(*)::int AS c FROM inventory_batches WHERE item_id = $1', [itemId]);
+  return res.rows[0]?.c || 0;
+}
+
+// If your schema has an order_items table referencing inventory_items(id),
+// this will detect it gracefully. If it doesn't exist, we ignore.
+async function countOrderReferences(itemId) {
+  const candidates = [
+    { table: 'order_items', column: 'item_id' },
+    { table: 'order_items', column: 'product_id' },
+    { table: 'orders_items', column: 'item_id' },
+    { table: 'orders_items', column: 'product_id' },
+    { table: 'sales_items', column: 'item_id' },
+    { table: 'sales_items', column: 'product_id' },
+  ];
+  for (const c of candidates) {
+    try {
+      const res = await pool.query(`SELECT COUNT(*)::int AS c FROM ${c.table} WHERE ${c.column} = $1`, [itemId]);
+      const count = res.rows[0]?.c || 0;
+      if (count > 0) return count;
+    } catch (e) {
+      // Table/column may not exist; skip to next candidate
+      continue;
+    }
+  }
+  return 0;
+}
+
+module.exports.countBatchesForItem = countBatchesForItem;
+module.exports.countOrderReferences = countOrderReferences;
 
 // BATCH CRUD
 async function addBatch({ itemId, quantity, expiry, unitAmount = null, unitLabel = null }) {
@@ -260,4 +301,4 @@ module.exports = {
   initializeSampleProducts,
   initInventoryTables,
   consumeStockFIFO,
-}; 
+};

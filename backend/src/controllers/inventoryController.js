@@ -9,7 +9,10 @@ const {
   discardBatch,
   getProductsForPOS,
   findInventoryItemByNameAndType,
+  countBatchesForItem,
+  countOrderReferences,
 } = require('../models/inventory');
+const pool = require('../db');
 
 // Get all inventory items with their batches
 async function getInventory(req, res) {
@@ -57,14 +60,37 @@ async function updateInventoryItemHandler(req, res) {
   }
 }
 
+
 // Delete an inventory item
 async function deleteInventoryItemHandler(req, res) {
   try {
     const { id } = req.params;
-    await deleteInventoryItem(id);
-    res.json({ success: true });
+    // Validate id
+    const itemId = Number(id);
+    if (!Number.isInteger(itemId)) {
+      return res.status(400).json({ error: 'Invalid inventory id' });
+    }
+    // Pre-checks to provide clear reasons instead of generic errors
+    const [batches, orderRefs] = await Promise.all([
+      countBatchesForItem(itemId),
+      countOrderReferences(itemId),
+    ]);
+    if (batches > 0) {
+      return res.status(409).json({ error: 'Cannot delete: product still has batches', details: `batches=${batches}` });
+    }
+    if (orderRefs > 0) {
+      return res.status(409).json({ error: 'Cannot delete: product used in past orders', details: `orders=${orderRefs}` });
+    }
+    // Attempt delete; model uses ON DELETE CASCADE for batches
+    await deleteInventoryItem(itemId);
+    return res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete item', details: err.message });
+    // Normalize common constraint errors to 409 instead of 500
+    const msg = err?.message || '';
+    if (/foreign key|constraint/i.test(msg)) {
+      return res.status(409).json({ error: 'Delete blocked by constraints', details: msg });
+    }
+    return res.status(500).json({ error: 'Failed to delete item', details: msg });
   }
 }
 
@@ -138,4 +164,23 @@ module.exports = {
   discardBatchHandler,
   searchInventory,
   getProductsForPOSHandler,
-}; 
+};
+
+// Admin utility: clear all inventory items and batches
+async function clearInventoryHandler(req, res) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM inventory_batches');
+    await client.query('DELETE FROM inventory_items');
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Failed to clear inventory', details: e.message });
+  } finally {
+    client.release();
+  }
+}
+
+module.exports.clearInventoryHandler = clearInventoryHandler;

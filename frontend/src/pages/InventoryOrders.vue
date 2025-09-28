@@ -58,29 +58,7 @@
             </label>
             <input v-model.number="rawForm.lowStockThreshold" type="number" min="1" class="input input-bordered w-full" required />
           </div>
-          <div class="mb-3" v-if="!rawForm.existingItemId">
-            <label class="block text-sm font-semibold mb-1">Measurement Unit</label>
-            <select v-model="rawForm.unit" class="select select-bordered w-full" required>
-              <option value="" disabled>Select unit</option>
-              <option value="g">g</option>
-              <option value="kg">kg</option>
-              <option value="ml">ml</option>
-              <option value="L">L</option>
-              <option value="pcs">pcs</option>
-            </select>
-          </div>
-          <div class="mb-3" v-if="!rawForm.existingItemId">
-            <label class="block text-sm font-semibold mb-1">Category</label>
-            <select v-model="rawForm.category" class="select select-bordered w-full" required>
-              <option value="" disabled>Select category</option>
-              <option value="Spices">Spices</option>
-              <option value="Meat">Meat</option>
-              <option value="Vegetables">Vegetables</option>
-              <option value="Baking">Baking</option>
-              <option value="Dairy">Dairy</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
+          <!-- Measurement Unit and Category removed per request -->
           <div v-if="addError" class="text-red-500 text-sm mb-2">{{ addError }}</div>
           <button type="submit" class="btn btn-primary w-full" :disabled="addLoading">
             {{ addLoading ? 'Adding...' : (rawForm.existingItemId ? 'Add Batch' : 'Add Raw Material') }}
@@ -206,6 +184,72 @@
       </div>
     </div>
 
+    <!-- Add Product Modal -->
+    <div v-if="showProductModal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg p-6 w-[28rem] relative">
+        <button class="absolute top-2 right-2 text-gray-400 hover:text-black" @click="showProductModal = false">&times;</button>
+        <h2 class="text-xl font-bold mb-4">Add Product</h2>
+        <form @submit.prevent="submitProduct">
+          <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Add to Existing Product</label>
+            <select v-model="productForm.existingItemId" class="select select-bordered w-full">
+              <option value="">-- Create New --</option>
+              <option v-for="p in inventory.filter(i => i.type === 'Product' || i.type === 'product')" :key="p.id" :value="p.id">
+                {{ p.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="mb-3" v-if="!productForm.existingItemId">
+            <label class="block text-sm font-semibold mb-1">Name</label>
+            <input v-model="productForm.name" class="input input-bordered w-full" placeholder="Product name" />
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Quantity</label>
+            <input v-model.number="productForm.quantity" type="number" min="1" class="input input-bordered w-full" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Expiry Date</label>
+            <input v-model="productForm.expiry" type="date" class="input input-bordered w-full" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-semibold mb-1">Low Stock Alert Level</label>
+            <input v-model.number="productForm.lowStockThreshold" type="number" min="1" class="input input-bordered w-full" required />
+          </div>
+
+          <div class="mb-3" v-if="!productForm.existingItemId">
+            <label class="block text-sm font-semibold mb-1">Price (₱)
+              <span class="block text-xs text-gray-500">Price that will appear in the POS system.</span>
+            </label>
+            <input v-model.number="productForm.price" type="number" min="0" step="0.01" class="input input-bordered w-full" />
+          </div>
+
+          <div class="mb-3" v-if="!productForm.existingItemId">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-semibold">Raw Materials</label>
+              <button type="button" class="btn btn-outline btn-xs" @click="addProductRawMaterial">+ Add Raw Material</button>
+            </div>
+            <div v-for="(rm, idx) in productForm.rawMaterials" :key="idx" class="flex gap-2 mb-2">
+              <select v-model="rm.name" class="select select-bordered flex-1">
+                <option value="" disabled>Select raw material</option>
+                <option v-for="raw in inventory.filter(i => i.type === 'raw')" :key="raw.id" :value="raw.name">{{ raw.name }}</option>
+              </select>
+              <input v-model.number="rm.quantity" type="number" min="1" class="input input-bordered w-24" placeholder="Qty" />
+              <button type="button" class="btn btn-error btn-sm" @click="removeProductRawMaterial(idx)">Remove</button>
+            </div>
+          </div>
+
+          <div v-if="addError" class="text-red-500 text-sm mb-2">{{ addError }}</div>
+          <button type="submit" class="btn btn-primary w-full" :disabled="addLoading">
+            {{ addLoading ? 'Saving...' : (productForm.existingItemId ? 'Add Batch' : 'Add Product') }}
+          </button>
+        </form>
+      </div>
+    </div>
+
     <!-- Main Content -->
     <div class="p-6 grid grid-cols-12 gap-6">
       <!-- Order History (Left) -->
@@ -247,7 +291,7 @@
               <div class="font-semibold text-gray-800">{{ item.name }}</div>
               <span v-if="isLowStock(item)" class="text-xs text-red-600 font-bold ml-2">Low Stock!</span>
               <button v-if="item.type === 'raw'" class="btn btn-link btn-xs" @click="openEditRawModal(item)">Edit</button>
-              <button class="btn btn-link btn-xs btn-error" @click="discardItem(item.id)">Discard</button>
+              <button class="btn btn-link btn-xs btn-error" @click="discardItem(item)">Discard</button>
             </div>
             <div class="text-xs text-gray-700 mb-2">
               Type: {{ item.type === 'raw' ? 'Raw Material' : (item.type === 'Product' ? 'Product' : 'Product') }}
@@ -330,12 +374,11 @@ const rawForm = ref({
   unitAmount: null,
   unitLabel: '',
   lowStockThreshold: 1,
-  unit: '',
-  category: '',
 });
 
 // --- Product Form ---
 const productForm = ref({
+  existingItemId: '',
   name: '',
   quantity: 1,
   expiry: '',
@@ -429,7 +472,7 @@ function soonToExpire(batch) {
 
 // --- Add Raw Material ---
 function openRawModal() {
-  rawForm.value = { existingItemId: '', name: '', quantity: 1, expiry: '', unitAmount: null, unitLabel: '', lowStockThreshold: 1, unit: '', category: '' };
+  rawForm.value = { existingItemId: '', name: '', quantity: 1, expiry: '', unitAmount: null, unitLabel: '', lowStockThreshold: 1 };
   addError.value = '';
   showRawModal.value = true;
 }
@@ -439,7 +482,7 @@ const currentUnitLabel = computed(() => {
     const found = inventory.value.find(i => i.id === Number(rawForm.value.existingItemId));
     return found?.unit || '';
   }
-  return rawForm.value.unit || '';
+  return '';
 });
 async function submitRawMaterial() {
   addLoading.value = true;
@@ -453,8 +496,6 @@ async function submitRawMaterial() {
     // If creating new, create or reuse by name via backend
     if (!itemId) {
       if (!rawForm.value.name) throw new Error('Name is required');
-      if (!rawForm.value.unit) throw new Error('Measurement unit is required');
-      if (!rawForm.value.category) throw new Error('Category is required');
 
       const res = await fetch('http://localhost:5000/api/inventory', {
         method: 'POST',
@@ -462,8 +503,8 @@ async function submitRawMaterial() {
         body: JSON.stringify({
           name: rawForm.value.name,
           type: 'raw',
-          unit: rawForm.value.unit,
-          category: rawForm.value.category,
+          unit: rawForm.value.unitLabel || currentUnitLabel.value || 'unit',
+          category: 'Other',
           lowStockThreshold: rawForm.value.lowStockThreshold,
           requiresRawMaterials: false,
           rawMaterials: [],
@@ -498,7 +539,7 @@ async function submitRawMaterial() {
 
 // --- Add Product ---
 function openProductModal() {
-  productForm.value = { name: '', quantity: 1, expiry: '', lowStockThreshold: 1, rawMaterials: [] };
+  productForm.value = { existingItemId: '', name: '', quantity: 1, expiry: '', lowStockThreshold: 1, price: 0, rawMaterials: [] };
   addError.value = '';
   showProductModal.value = true;
 }
@@ -512,15 +553,19 @@ async function submitProduct() {
   addLoading.value = true;
   addError.value = '';
   try {
-    if (!productForm.value.name) throw new Error('Name is required');
     if (!productForm.value.expiry) throw new Error('Expiry date is required');
     if (productForm.value.quantity < 1) throw new Error('Quantity must be at least 1');
-    if (productForm.value.rawMaterials.some(rm => !rm.name || rm.quantity < 1)) throw new Error('All raw materials must have a name and quantity');
-    // 1. Create item
-    const res = await fetch('http://localhost:5000/api/inventory', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-              body: JSON.stringify({
+
+    let itemId = productForm.value.existingItemId;
+
+    if (!itemId) {
+      if (!productForm.value.name) throw new Error('Name is required');
+      if (productForm.value.rawMaterials.some(rm => !rm.name || rm.quantity < 1)) throw new Error('All raw materials must have a name and quantity');
+      // 1. Create item
+      const res = await fetch('http://localhost:5000/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({
           name: productForm.value.name,
           type: 'Product',
           lowStockThreshold: productForm.value.lowStockThreshold,
@@ -528,15 +573,17 @@ async function submitProduct() {
           rawMaterials: productForm.value.rawMaterials,
           price: productForm.value.price,
         }),
-    });
-    if (!res.ok) throw new Error('Failed to add product');
-    const item = await res.json();
+      });
+      if (!res.ok) throw new Error('Failed to add product');
+      const item = await res.json();
+      itemId = item.id;
+    }
     // 2. Add batch
     const batchRes = await fetch('http://localhost:5000/api/inventory/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({
-        itemId: item.id,
+        itemId,
         quantity: productForm.value.quantity,
         expiry: productForm.value.expiry,
       }),
@@ -583,6 +630,31 @@ async function submitEditBatch() {
 }
 
 // --- Discard Item or Batch ---
+async function discardItem(item) {
+  try {
+    const label = item?.type === 'raw' ? 'raw material' : 'product';
+    if (!item?.id) return;
+    if (!confirm(`Are you sure you want to discard this ${label}? This will remove the item and all its batches.`)) return;
+    const res = await fetch(`http://localhost:5000/api/inventory/${item.id}`,
+      {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      }
+    );
+    if (!res.ok) {
+      let info = {};
+      try { info = await res.json(); } catch(_) {}
+      const msg = info.error || info.details || `Failed to discard ${label}`;
+      alert(msg);
+      return;
+    }
+    await fetchInventory();
+  } catch (e) {
+    alert(e.message || 'Failed to discard item');
+  }
+  }
+
+// archive/clear inventory utilities removed per request
 async function discardBatch(itemId, batchId) {
   // Always confirm before discarding
   if (confirm('Are you sure you want to discard this batch?')) {
@@ -595,6 +667,9 @@ async function discardBatch(itemId, batchId) {
     await fetchInventory();
   }
 }
+
+// Improve item discard error handling with clear messages from server
+// Replaces fetch in discardItem to surface 409 reasons.
 
 function formatDate(dateString) {
   if (!dateString) return 'N/A';

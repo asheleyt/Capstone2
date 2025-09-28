@@ -1,0 +1,44 @@
+At line:1 char:84
++ ... tgres://USER:PASSWORD@localhost:5432/DBNAME'; node -e (async()==requi ...
++                                                                  ~
+An expression was expected after '('.
+At line:1 char:100
++ ... SWORD@localhost:5432/DBNAME'; node -e (async()==require('pg');const c ...
++                                                                  ~
+Missing closing ')' in expression.
+At line:1 char:181
++ ... {connectionString:process.env.DATABASE_URL});await c.connect();try{aw ...
++                                                                  ~
+An expression was expected after '('.
+At line:1 char:364
++ ...  batches cleared. Items preserved for order history.');}catch(e){awai ...
++                                                                  ~
+The Catch block is missing its statement block.
+At line:1 char:367
++ ... ches cleared. Items preserved for order history.');}catch(e){await c. ...
++                                                                 ~
+Unexpected token '{' in expression or statement.
+At line:1 char:418
++ ... ;}catch(e){await c.query('ROLLBACK');console.error('Failed:',e.messag ...
++                                                                  ~
+Missing expression after ','.
+At line:1 char:418
++ ... ){await c.query('ROLLBACK');console.error('Failed:',e.message);}final ...
++                                                         ~~~~~~~~~
+Unexpected token 'e.message' in expression or statement.
+At line:1 char:418
++ ... ;}catch(e){await c.query('ROLLBACK');console.error('Failed:',e.messag ...
++                                                                  ~
+Missing closing ')' in expression.
+At line:1 char:367
++ ... ches cleared. Items preserved for order history.');}catch(e){await c. ...
++                                                                 ~
+Missing closing '}' in statement block or type definition.
+At line:1 char:427
++ ... {await c.query('ROLLBACK');console.error('Failed:',e.message);}finall ...
++                                                                 ~
+Unexpected token ')' in expression or statement.
+Not all parse errors were reported.  Correct the reported errors and try again.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : ExpectedExpression
+ 

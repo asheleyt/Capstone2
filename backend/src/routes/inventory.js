@@ -8,6 +8,7 @@ const {
   discardBatchHandler,
   searchInventory,
   getProductsForPOSHandler,
+  clearInventoryHandler,
 } = require('../controllers/inventoryController');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { activityLoggers } = require('../middleware/activityLogger');
@@ -20,12 +21,16 @@ router.get('/', getInventory);
 router.post('/', authenticateToken, requireAdmin, activityLoggers.addInventory, addInventoryItem);
 // Update inventory item (Admin only)
 router.put('/:id', authenticateToken, requireAdmin, activityLoggers.updateInventory, updateInventoryItemHandler);
+// Archive/unarchive inventory item (Admin only)
+// archive route removed per request
 // Delete inventory item (Admin only)
 router.delete('/:id', authenticateToken, requireAdmin, activityLoggers.deleteInventory, deleteInventoryItemHandler);
 // Add batch to item (Admin only)
 router.post('/batch', authenticateToken, requireAdmin, addBatchHandler);
 // Discard batch (Admin only)
 router.delete('/batch/:batchId', authenticateToken, requireAdmin, discardBatchHandler);
+// Clear ALL inventory (Admin only)
+router.post('/clear', authenticateToken, requireAdmin, clearInventoryHandler);
 // Search inventory (Admin only)
 router.get('/search', authenticateToken, requireAdmin, searchInventory);
 // Get products for POS (Public - no authentication required)
