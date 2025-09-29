@@ -12,6 +12,7 @@ async function getActivityLogsHandler(req, res) {
       page = 1,
       limit = 20
     } = req.query;
+    console.log('[activity-logs] query:', { userId, action, startDate, endDate, status, page, limit });
     
     // Validate pagination parameters
     const pageNum = Math.max(1, parseInt(page));

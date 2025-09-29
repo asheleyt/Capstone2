@@ -81,7 +81,7 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-gray-50">
+              <tr v-for="log in serverLogs" :key="log.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ formatDateTime(log.timestamp) }}
                 </td>
@@ -112,34 +112,56 @@
           </table>
           
           <!-- Empty State -->
-          <div v-if="filteredLogs.length === 0" class="text-center py-8">
+          <div v-if="serverLogs.length === 0" class="text-center py-8">
             <p class="text-gray-500">No activity logs found for the selected filters.</p>
           </div>
         </div>
 
         <!-- Pagination -->
-        <div v-if="filteredLogs.length > 0" class="mt-6 flex items-center justify-between">
-          <div class="text-sm text-gray-700">
-            Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredLogs.length) }} of {{ filteredLogs.length }} results
+        <div v-if="serverLogs.length > 0" class="mt-6 flex items-center justify-between">
+          <div class="text-sm text-gray-700 flex items-center space-x-3">
+            <span>Showing {{ serverLogs.length }} of {{ pagination.totalItems }} results</span>
+            <label class="flex items-center space-x-1">
+              <span class="text-gray-500">Per page</span>
+              <select v-model.number="itemsPerPage" @change="changePageSize" class="border border-gray-300 rounded-md px-2 py-1">
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
+            </label>
           </div>
           <div class="flex items-center space-x-2">
             <button 
-              @click="currentPage = Math.max(1, currentPage - 1)"
-              :disabled="currentPage === 1"
-              class="px-3 py-1 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              @click="goFirst"
+              :disabled="pagination.currentPage === 1"
+              class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50"
+              :class="{ 'text-gray-700 bg-gray-100 opacity-100 cursor-not-allowed': pagination.currentPage === 1 }"
+            >First</button>
+            <button 
+              @click="goPrev"
+              :disabled="!pagination.hasPrevPage"
+              class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50"
+              :class="{ 'text-gray-700 bg-gray-100 opacity-100 cursor-not-allowed': !pagination.hasPrevPage }"
             >
               Previous
             </button>
             <span class="px-3 py-1 text-sm text-gray-700">
-              Page {{ currentPage }} of {{ totalPages }}
+              Page {{ pagination.currentPage }} of {{ pagination.totalPages }}
             </span>
             <button 
-              @click="currentPage = Math.min(totalPages, currentPage + 1)"
-              :disabled="currentPage === totalPages"
-              class="px-3 py-1 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              @click="goNext"
+              :disabled="!pagination.hasNextPage"
+              class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50"
+              :class="{ 'text-gray-700 bg-gray-100 opacity-100 cursor-not-allowed': !pagination.hasNextPage }"
             >
               Next
             </button>
+            <button 
+              @click="goLast"
+              :disabled="pagination.currentPage === pagination.totalPages || pagination.totalPages === 0"
+              class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50"
+              :class="{ 'text-gray-700 bg-gray-100 opacity-100 cursor-not-allowed': pagination.currentPage === pagination.totalPages || pagination.totalPages === 0 }"
+            >Last</button>
           </div>
         </div>
       </div>
@@ -148,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import AdminNavbar from '../components/AdminNavbar.vue';
@@ -158,6 +180,7 @@ const showCalendar = ref(false);
 
 // Reactive data
 const activityLogs = ref([]);
+const serverLogs = ref([]);
 const users = ref([]);
 const loading = ref(false);
 const error = ref('');
@@ -167,6 +190,7 @@ const startDate = ref('');
 const endDate = ref('');
 const currentPage = ref(1);
 const itemsPerPage = ref(20);
+const pagination = ref({ currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: 20, hasNextPage: false, hasPrevPage: false });
 
 // Computed properties
 const filteredLogs = computed(() => {
@@ -226,19 +250,36 @@ async function fetchActivityLogs() {
   error.value = '';
   
   try {
-    const response = await fetch('http://localhost:5000/api/activity-logs', {
+    const params = new URLSearchParams();
+    if (selectedUser.value) params.set('userId', selectedUser.value);
+    if (selectedAction.value) params.set('action', selectedAction.value);
+    if (startDate.value) params.set('startDate', startDate.value);
+    if (endDate.value) params.set('endDate', endDate.value);
+    params.set('page', String(currentPage.value));
+    params.set('limit', String(itemsPerPage.value));
+
+    const response = await fetch(`http://localhost:5000/api/activity-logs?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json'
       }
     });
 
+    if (response.status === 204) {
+      // No content from server; treat as empty result set
+      serverLogs.value = [];
+      pagination.value = { currentPage: currentPage.value, totalPages: 1, totalItems: 0, itemsPerPage: itemsPerPage.value, hasNextPage: false, hasPrevPage: currentPage.value > 1 };
+      console.warn('Activity logs: server returned 204 No Content');
+      return;
+    }
+
     if (!response.ok) {
       throw new Error('Failed to fetch activity logs');
     }
 
     const data = await response.json();
-    activityLogs.value = data.logs || [];
+    serverLogs.value = data.logs || [];
+    pagination.value = data.pagination || pagination.value;
   } catch (err) {
     error.value = err.message;
     console.error('Error fetching activity logs:', err);
@@ -267,6 +308,7 @@ async function fetchUsers() {
 
 function filterLogs() {
   currentPage.value = 1; // Reset to first page when filtering
+  fetchActivityLogs();
 }
 
 function formatDateTime(timestamp) {
@@ -356,15 +398,49 @@ async function downloadSalesReport() {
 
 // Initialize
 onMounted(() => {
-  fetchActivityLogs();
-  fetchUsers();
-  
-  // Set default date range to last 7 days
+  // Set default date range to last 7 days BEFORE first fetch
   const today = new Date();
   const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
   endDate.value = today.toISOString().split('T')[0];
   startDate.value = weekAgo.toISOString().split('T')[0];
+
+  fetchUsers();
+  fetchActivityLogs();
 });
+
+watch(currentPage, () => {
+  fetchActivityLogs();
+});
+
+function goPrev() {
+  if (pagination.value.hasPrevPage) {
+    currentPage.value = Math.max(1, currentPage.value - 1);
+  }
+}
+
+function goNext() {
+  if (pagination.value.hasNextPage) {
+    currentPage.value = currentPage.value + 1;
+  }
+}
+
+function goFirst() {
+  if (pagination.value.currentPage !== 1) {
+    currentPage.value = 1;
+  }
+}
+
+function goLast() {
+  const last = pagination.value.totalPages || 1;
+  if (pagination.value.currentPage !== last) {
+    currentPage.value = last;
+  }
+}
+
+function changePageSize() {
+  currentPage.value = 1;
+  fetchActivityLogs();
+}
 </script>
 
 <style scoped>
@@ -399,3 +475,7 @@ tr:hover {
   align-items: center;
 }
 </style>
+
+
+
+

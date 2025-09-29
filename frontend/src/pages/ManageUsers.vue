@@ -32,7 +32,6 @@
         <table v-if="filteredUsers.length" class="min-w-full bg-white border rounded">
           <thead>
             <tr>
-              <th class="px-4 py-2 border text-gray-800">ID</th>
               <th class="px-4 py-2 border text-gray-800">Full Name</th>
               <th class="px-4 py-2 border text-gray-800">Username</th>
               <th class="px-4 py-2 border text-gray-800">Role</th>
@@ -41,13 +40,20 @@
           </thead>
           <tbody>
             <tr v-for="user in filteredUsers" :key="user.id">
-              <td class="px-4 py-2 border text-gray-800">{{ user.id }}</td>
               <td class="px-4 py-2 border text-gray-800">{{ user.full_name }}</td>
               <td class="px-4 py-2 border text-gray-800">{{ user.username }}</td>
               <td class="px-4 py-2 border text-gray-800">{{ user.role }}</td>
               <td class="px-4 py-2 border text-gray-800">
-                <button class="text-blue-600 hover:underline mr-2" @click="openEditUser(user)">Edit</button>
-                <button class="text-red-600 hover:underline" @click="deleteUser(user.id)">Delete</button>
+                <button
+                  :class="['mr-2', rowLocked(user) ? 'text-gray-300 pointer-events-none' : 'text-blue-600 hover:underline']"
+                  :aria-disabled="rowLocked(user)"
+                  @click="!rowLocked(user) && openEditUser(user)"
+                >Edit</button>
+                <button
+                  :class="[rowLocked(user) ? 'text-gray-300 pointer-events-none' : 'text-red-600 hover:underline']"
+                  :aria-disabled="rowLocked(user)"
+                  @click="!rowLocked(user) && deleteUser(user.id)"
+                >Delete</button>
               </td>
             </tr>
           </tbody>
@@ -192,6 +198,14 @@ const users = ref([]);
 const isLoadingUsers = ref(false);
 const usersError = ref('');
 const searchQuery = ref('');
+
+// Determine current user's role to adjust UI affordances
+const currentUser = (() => {
+  try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
+})();
+const isSuperAdmin = computed(() => currentUser?.role === 'SuperAdmin');
+const isAdmin = computed(() => currentUser?.role === 'Admin');
+const rowLocked = (u) => isAdmin.value && (u.role === 'Admin' || u.role === 'SuperAdmin');
 
 const filteredUsers = computed(() => {
   if (!searchQuery.value) return users.value;
