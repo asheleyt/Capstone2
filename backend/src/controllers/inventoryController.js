@@ -34,7 +34,7 @@ async function getInventory(req, res) {
 // Add a new inventory item
 async function addInventoryItem(req, res) {
   try {
-    const { name, type, unit, category, lowStockThreshold, requiresRawMaterials, rawMaterials } = req.body;
+    const { name, type, unit, category, lowStockThreshold, requiresRawMaterials, rawMaterials, price } = req.body;
 
     // If this is a raw material/product that already exists by name+type, reuse it
     const existing = await findInventoryItemByNameAndType(name, type);
@@ -42,7 +42,7 @@ async function addInventoryItem(req, res) {
       return res.status(200).json(existing);
     }
 
-    const item = await createInventoryItem({ name, type, unit, category, lowStockThreshold, requiresRawMaterials, rawMaterials });
+    const item = await createInventoryItem({ name, type, unit, category, lowStockThreshold, requiresRawMaterials, rawMaterials, price });
     res.status(201).json(item);
   } catch (err) {
     res.status(500).json({ error: 'Failed to add item', details: err.message });
