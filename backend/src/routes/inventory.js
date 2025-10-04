@@ -3,6 +3,7 @@ const {
   getInventory,
   addInventoryItem,
   updateInventoryItemHandler,
+  archiveInventoryItemHandler,
   deleteInventoryItemHandler,
   addBatchHandler,
   discardBatchHandler,
@@ -21,6 +22,8 @@ router.get('/', getInventory);
 router.post('/', authenticateToken, requireAdmin, activityLoggers.addInventory, addInventoryItem);
 // Update inventory item (Admin only)
 router.put('/:id', authenticateToken, requireAdmin, activityLoggers.updateInventory, updateInventoryItemHandler);
+// Archive/unarchive inventory item
+router.patch('/:id/archive', authenticateToken, requireAdmin, activityLoggers.updateInventory, archiveInventoryItemHandler);
 // Archive/unarchive inventory item (Admin only)
 // archive route removed per request
 // Delete inventory item (Admin only)

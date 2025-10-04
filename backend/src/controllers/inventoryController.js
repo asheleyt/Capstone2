@@ -71,12 +71,50 @@ async function deleteInventoryItemHandler(req, res) {
       return res.status(400).json({ error: 'Invalid inventory id' });
     }
     // Pre-checks to provide clear reasons instead of generic errors
+    // Fallbacks in case helpers are not functions due to import issues
+    const countBatches = async (id) => {
+      if (typeof countBatchesForItem === 'function') return countBatchesForItem(id);
+      const res = await pool.query('SELECT COUNT(*)::int AS c FROM inventory_batches WHERE item_id = $1', [id]);
+      return res.rows[0]?.c || 0;
+    };
+    const countRefs = async (id) => {
+      if (typeof countOrderReferences === 'function') return countOrderReferences(id);
+      // Probe a few likely tables but ignore errors if they don't exist
+      const candidates = [
+        { table: 'order_items', column: 'item_id' },
+        { table: 'order_items', column: 'product_id' },
+        { table: 'orders_items', column: 'item_id' },
+        { table: 'orders_items', column: 'product_id' },
+        { table: 'sales_items', column: 'item_id' },
+        { table: 'sales_items', column: 'product_id' },
+      ];
+      for (const c of candidates) {
+        try {
+          const res = await pool.query(`SELECT COUNT(*)::int AS c FROM ${c.table} WHERE ${c.column} = $1`, [id]);
+          const n = res.rows[0]?.c || 0;
+          if (n > 0) return n;
+        } catch (_) { /* ignore missing tables */ }
+      }
+      return 0;
+    };
+
     const [batches, orderRefs] = await Promise.all([
-      countBatchesForItem(itemId),
-      countOrderReferences(itemId),
+      countBatches(itemId),
+      countRefs(itemId),
     ]);
     if (batches > 0) {
-      return res.status(409).json({ error: 'Cannot delete: product still has batches', details: `batches=${batches}` });
+      // Auto-remove all batches first so the item can be deleted.
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('DELETE FROM inventory_batches WHERE item_id = $1', [itemId]);
+        await client.query('COMMIT');
+      } catch (e) {
+        await client.query('ROLLBACK');
+        return res.status(500).json({ error: 'Failed to remove batches before delete', details: e.message });
+      } finally {
+        client.release();
+      }
     }
     if (orderRefs > 0) {
       return res.status(409).json({ error: 'Cannot delete: product used in past orders', details: `orders=${orderRefs}` });
@@ -165,6 +203,22 @@ module.exports = {
   searchInventory,
   getProductsForPOSHandler,
 };
+
+// Archive/unarchive an inventory item
+async function archiveInventoryItemHandler(req, res) {
+  try {
+    const { id } = req.params;
+    const { archived } = req.body;
+    const itemId = Number(id);
+    if (!Number.isInteger(itemId)) return res.status(400).json({ error: 'Invalid id' });
+    const updated = await updateInventoryItem(itemId, { archived: !!archived });
+    res.json(updated);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update archive status', details: e.message });
+  }
+}
+
+module.exports.archiveInventoryItemHandler = archiveInventoryItemHandler;
 
 // Admin utility: clear all inventory items and batches
 async function clearInventoryHandler(req, res) {

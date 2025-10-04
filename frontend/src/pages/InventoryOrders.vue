@@ -29,10 +29,7 @@
             <label class="block text-sm font-semibold mb-1">Name</label>
             <input v-model="rawForm.name" class="input input-bordered w-full text-white" required />
           </div>
-          <div class="mb-3">
-            <label class="block text-sm font-semibold mb-1">Quantity</label>
-            <input v-model.number="rawForm.quantity" type="number" min="1" class="input input-bordered w-full" required />
-          </div>
+          <!-- Quantity removed: we rely on measurement + unit (including pcs) -->
           <div class="mb-3">
             <label class="block text-sm font-semibold mb-1">Expiry Date</label>
             <input v-model="rawForm.expiry" type="date" class="input input-bordered w-full text-white" required />
@@ -77,9 +74,12 @@
             <label class="block text-sm font-semibold mb-1">Name</label>
             <input v-model="productForm.name" class="input input-bordered w-full" required />
           </div>
-          <div class="mb-3">
+          <div class="mb-3" v-if="productForm.rawMaterials.length === 0">
             <label class="block text-sm font-semibold mb-1">Quantity</label>
             <input v-model.number="productForm.quantity" type="number" min="1" class="input input-bordered w-full" required />
+          </div>
+          <div class="mb-2 text-xs text-gray-600" v-else>
+            Quantity is auto-calculated from raw materials.
           </div>
           <div class="mb-3">
             <label class="block text-sm font-semibold mb-1">Expiry Date</label>
@@ -99,13 +99,24 @@
           </div>
           <div class="mb-3">
             <label class="block text-sm font-semibold mb-1">Raw Materials</label>
-            <div v-for="(rm, idx) in productForm.rawMaterials" :key="idx" class="flex gap-2 mb-2">
-              <select v-model="rm.name" class="select select-bordered flex-1">
+            <div v-for="(rm, idx) in productForm.rawMaterials" :key="idx" class="grid grid-cols-12 gap-2 mb-2 items-center">
+              <select v-model="rm.name" class="select select-bordered col-span-5" @change="onRmChange(rm)">
                 <option value="" disabled>Select Raw Material</option>
                 <option v-for="raw in inventory.filter(i => i.type === 'raw')" :key="raw.id" :value="raw.name">{{ raw.name }}</option>
               </select>
-              <input v-model.number="rm.quantity" type="number" min="1" class="input input-bordered w-20" placeholder="Qty" />
-              <button type="button" class="btn btn-error btn-xs" @click="removeProductRawMaterial(idx)">&times;</button>
+              <input v-model.number="rm.perUnitAmount" @input="recomputeProductQty()" type="number" min="0" step="0.01" class="input input-bordered col-span-3" placeholder="Amt per product" />
+              <select v-model="rm.unit" class="select select-bordered col-span-2" @change="recomputeProductQty()">
+                <option value="">unit</option>
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="ml">ml</option>
+                <option value="L">L</option>
+                <option value="pcs">pcs</option>
+              </select>
+              <button type="button" class="btn btn-error btn-xs col-span-2" @click="removeProductRawMaterial(idx)">&times;</button>
+              <div class="col-span-12 text-xs text-gray-600" v-if="rm.name">
+                <span>In stock: {{ getRawStock(rm).display }}</span>
+              </div>
             </div>
             <button type="button" class="btn btn-outline btn-sm text-white bg-black" @click="addProductRawMaterial">+ Add Raw Material</button>
           </div>
@@ -205,9 +216,12 @@
             <input v-model="productForm.name" class="input input-bordered w-full" placeholder="Product name" />
           </div>
 
-          <div class="mb-3">
+          <div class="mb-3" v-if="productForm.rawMaterials.length === 0">
             <label class="block text-sm font-semibold mb-1">Quantity</label>
             <input v-model.number="productForm.quantity" type="number" min="1" class="input input-bordered w-full" required />
+          </div>
+          <div class="mb-2 text-xs text-gray-600" v-else>
+            Quantity is auto-calculated from raw materials.
           </div>
 
           <div class="mb-3">
@@ -232,13 +246,24 @@
               <label class="block text-sm font-semibold">Raw Materials</label>
               <button type="button" class="btn btn-outline btn-xs" @click="addProductRawMaterial">+ Add Raw Material</button>
             </div>
-            <div v-for="(rm, idx) in productForm.rawMaterials" :key="idx" class="flex gap-2 mb-2">
-              <select v-model="rm.name" class="select select-bordered flex-1">
+            <div v-for="(rm, idx) in productForm.rawMaterials" :key="idx" class="grid grid-cols-12 gap-2 mb-2 items-center">
+              <select v-model="rm.name" class="select select-bordered col-span-5" @change="onRmChange(rm)">
                 <option value="" disabled>Select raw material</option>
                 <option v-for="raw in inventory.filter(i => i.type === 'raw')" :key="raw.id" :value="raw.name">{{ raw.name }}</option>
               </select>
-              <input v-model.number="rm.quantity" type="number" min="1" class="input input-bordered w-24" placeholder="Qty" />
-              <button type="button" class="btn btn-error btn-sm" @click="removeProductRawMaterial(idx)">Remove</button>
+              <input v-model.number="rm.perUnitAmount" @input="recomputeProductQty()" type="number" min="0" step="0.01" class="input input-bordered col-span-3" placeholder="Amt per product" />
+              <select v-model="rm.unit" class="select select-bordered col-span-2" @change="recomputeProductQty()">
+                <option value="">unit</option>
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="ml">ml</option>
+                <option value="L">L</option>
+                <option value="pcs">pcs</option>
+              </select>
+              <button type="button" class="btn btn-error btn-sm col-span-2" @click="removeProductRawMaterial(idx)">Remove</button>
+              <div class="col-span-12 text-xs text-gray-600" v-if="rm.name">
+                <span>In stock: {{ getRawStock(rm).display }}</span>
+              </div>
             </div>
           </div>
 
@@ -292,6 +317,7 @@
               <span v-if="isLowStock(item)" class="text-xs text-red-600 font-bold ml-2">Low Stock!</span>
               <button v-if="item.type === 'raw'" class="btn btn-link btn-xs" @click="openEditRawModal(item)">Edit</button>
               <button class="btn btn-link btn-xs btn-error" @click="discardItem(item)">Discard</button>
+              <button class="btn btn-link btn-xs" @click="archiveItem(item)">Archive</button>
             </div>
             <div class="text-xs text-gray-700 mb-2">
               Type: {{ item.type === 'raw' ? 'Raw Material' : (item.type === 'Product' ? 'Product' : 'Product') }}
@@ -316,7 +342,14 @@
             <div v-if="(item.type === 'product' || item.type === 'Product') && item.requires_raw_materials" class="mt-2 text-xs text-gray-600">
               <div>Raw Materials:</div>
               <ul class="list-disc ml-4">
-                <li v-for="rm in item.raw_materials" :key="rm.name">{{ rm.quantity }}x {{ rm.name }}</li>
+                <li v-for="rm in item.raw_materials" :key="rm.name">
+                  <template v-if="rm.perUnitAmount">
+                    {{ rm.perUnitAmount }}<span v-if="rm.unit"> {{ rm.unit }}</span> of {{ rm.name }} per product
+                  </template>
+                  <template v-else>
+                    {{ rm.quantity || 1 }}x {{ rm.name }}
+                  </template>
+                </li>
               </ul>
             </div>
           </div>
@@ -384,7 +417,7 @@ const productForm = ref({
   expiry: '',
   lowStockThreshold: 1,
   price: 0,
-  rawMaterials: [], // [{ name, quantity }]
+  rawMaterials: [], // [{ name, perUnitAmount, unit }]
 });
 
 // --- Add/Edit Raw Material Modal logic (add after editBatchForm and editItem)
@@ -489,7 +522,7 @@ async function submitRawMaterial() {
   addError.value = '';
   try {
     if (!rawForm.value.expiry) throw new Error('Expiry date is required');
-    if (rawForm.value.quantity < 1) throw new Error('Quantity must be at least 1');
+    // No plain quantity; rely on unit amount + unit label or default unit
 
     let itemId = rawForm.value.existingItemId;
 
@@ -521,7 +554,7 @@ async function submitRawMaterial() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
       body: JSON.stringify({
         itemId,
-        quantity: rawForm.value.quantity,
+        quantity: 1,
         expiry: rawForm.value.expiry,
         unitAmount: rawForm.value.unitAmount,
         unitLabel: rawForm.value.unitLabel || currentUnitLabel.value,
@@ -544,10 +577,61 @@ function openProductModal() {
   showProductModal.value = true;
 }
 function addProductRawMaterial() {
-  productForm.value.rawMaterials.push({ name: '', quantity: 1 });
+  productForm.value.rawMaterials.push({ name: '', perUnitAmount: 0, unit: '' });
 }
 function removeProductRawMaterial(idx) {
   productForm.value.rawMaterials.splice(idx, 1);
+}
+
+// Helpers for unit conversion and stock math
+function toBase(amount, unit) {
+  if (unit === 'kg') return amount * 1000; // base g
+  if (unit === 'g') return amount;
+  if (unit === 'L') return amount * 1000; // base ml
+  if (unit === 'ml') return amount;
+  return amount; // pcs or unitless
+}
+function sameFamily(u1, u2) {
+  const g = ['g', 'kg'];
+  const ml = ['ml', 'L'];
+  if (!u1 || !u2) return true;
+  return (g.includes(u1) && g.includes(u2)) || (ml.includes(u1) && ml.includes(u2)) || (u1 === u2);
+}
+function getRawByName(name) {
+  return inventory.value.find(i => i.type === 'raw' && i.name === name);
+}
+function getRawStock(rm) {
+  const raw = getRawByName(rm.name);
+  if (!raw) return { total: 0, unit: rm.unit || '', display: '0' };
+  const unit = raw.unit || rm.unit || '';
+  const total = raw.batches.reduce((s,b)=> s + (b.quantity || 0), 0);
+  return { total, unit, display: `${total} ${unit}`.trim() };
+}
+function onRmChange(rm){
+  const raw = getRawByName(rm.name);
+  if (raw && !rm.unit) rm.unit = raw.unit || '';
+  recomputeProductQty();
+}
+
+function recomputeProductQty(){
+  if (!productForm.value.rawMaterials.length) return;
+  let possible = Infinity;
+  for (const rm of productForm.value.rawMaterials){
+    if (!rm.name || !rm.perUnitAmount || rm.perUnitAmount <= 0) continue;
+    const raw = getRawByName(rm.name);
+    if (!raw) { possible = 0; break; }
+    const stock = raw.batches.reduce((s,b)=> s + (b.quantity||0),0);
+    const rawUnit = raw.unit || '';
+    const useUnit = rm.unit || rawUnit;
+    if (!sameFamily(rawUnit, useUnit)) { possible = 0; break; }
+    const per = toBase(rm.perUnitAmount, useUnit);
+    const available = toBase(stock, rawUnit);
+    if (per <= 0) { possible = 0; break; }
+    possible = Math.min(possible, Math.floor(available / per));
+  }
+  if (Number.isFinite(possible) && possible >= 0) {
+    productForm.value.quantity = possible;
+  }
 }
 async function submitProduct() {
   addLoading.value = true;
@@ -560,7 +644,9 @@ async function submitProduct() {
 
     if (!itemId) {
       if (!productForm.value.name) throw new Error('Name is required');
-      if (productForm.value.rawMaterials.some(rm => !rm.name || rm.quantity < 1)) throw new Error('All raw materials must have a name and quantity');
+      if (productForm.value.rawMaterials.some(rm => !rm.name || rm.perUnitAmount <= 0)) throw new Error('Each raw material needs an amount per product');
+      // compute auto quantity based on available stock
+      recomputeProductQty();
       // 1. Create item
       const res = await fetch('http://localhost:5000/api/inventory', {
         method: 'POST',
@@ -665,6 +751,29 @@ async function discardBatch(itemId, batchId) {
       }
     );
     await fetchInventory();
+  }
+}
+
+// Archive/unarchive item
+async function archiveItem(item) {
+  try {
+    if (!item?.id) return;
+    const toArchive = !item.archived;
+    const verb = toArchive ? 'archive' : 'unarchive';
+    if (!confirm(`Are you sure you want to ${verb} this item?`)) return;
+    const res = await fetch(`http://localhost:5000/api/inventory/${item.id}/archive`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      body: JSON.stringify({ archived: toArchive })
+    });
+    if (!res.ok) {
+      let info = {}; try { info = await res.json(); } catch(_) {}
+      alert(info.error || `Failed to ${verb} item`);
+      return;
+    }
+    await fetchInventory();
+  } catch (e) {
+    alert(e.message || 'Failed to update archive status');
   }
 }
 

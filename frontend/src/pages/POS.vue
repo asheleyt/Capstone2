@@ -684,8 +684,47 @@ async function checkout() {
         try { serverMsg = await response.text(); } catch {}
       }
       console.error('Order creation failed:', response.status, serverMsg);
-      alert(`Checkout failed (${response.status}).\n${serverMsg}`);
-      return;
+      if (response.status === 409) {
+        if (/Order number conflict/i.test(serverMsg)) {
+          alert('Order number conflict. Retrying once...');
+          // quick retry once
+          const retry = await fetch(`${BASE_URL}/api/orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(order)
+          });
+          if (!retry.ok) {
+            const t = await retry.json().catch(()=>({}));
+            alert(`Checkout failed (${retry.status}).\n${t?.error || 'Please try again.'}`);
+            return;
+          }
+        } else if (/Table conflict|occupied|open order/i.test(serverMsg)) {
+          if (confirm('Table is occupied or has an open order. Use Same Table override?')) {
+            order.sameTableOverride = true;
+            order.sameTableNumber = order.tableNumber;
+            const retry = await fetch(`${BASE_URL}/api/orders`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify(order)
+            });
+            if (!retry.ok) {
+              const t = await retry.json().catch(()=>({}));
+              alert(`Checkout failed (${retry.status}).\n${t?.error || 'Please try again.'}`);
+              return;
+            }
+            response = retry;
+          } else {
+            alert('Please change the table number and try again.');
+            return;
+          }
+        } else {
+          alert(`Checkout failed (${response.status}).\n${serverMsg}`);
+          return;
+        }
+      } else {
+        alert(`Checkout failed (${response.status}).\n${serverMsg}`);
+        return;
+      }
     }
     const result = await response.json();
     console.log('Order created:', result);

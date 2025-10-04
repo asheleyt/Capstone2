@@ -48,6 +48,7 @@ async function createOrderHandler(req, res) {
       }
     }
 
+    // Create order (order number is generated server-side in model to avoid conflicts)
     const order = await createOrder(orderData);
 
     // Auto-occupy the table if this is a dine-in order with a table number
@@ -84,6 +85,13 @@ async function createOrderHandler(req, res) {
       sameTableOverride: req?.body?.sameTableOverride,
       orderType: req?.body?.orderType
     });
+    // Surface known conflicts clearly
+    if (/open order|table .* occupied|same table/i.test(err?.message || '')) {
+      return res.status(409).json({ error: 'Table conflict', details: err.message });
+    }
+    if (/duplicate key value|unique constraint|23505/i.test(err?.message || '')) {
+      return res.status(409).json({ error: 'Order number conflict', details: err.message });
+    }
     res.status(500).json({ error: 'Failed to create order', details: err.message });
   }
 }
