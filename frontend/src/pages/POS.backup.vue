@@ -1,18 +1,33 @@
-<template>
-  <div class="min-h-screen flex bg-gray-100">
-    <!-- Sidebar -->
-    <aside class="w-56 bg-gray-200 flex flex-col justify-between py-6 px-4">
-      <div>
-        <nav>
-          <button 
-            class="flex items-center space-x-2 mb-4 text-black hover:underline" 
-            @click="toggleOrderHistory"
-          >
-            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
-            <span>{{ showOrderHistory ? 'Hide' : 'Show' }} Order History</span>
-          </button>
-        </nav>
-      </div>
+<div class="bg-gray-100 rounded p-4 mb-4">
+  <div class="flex items-center justify-between text-sm text-gray-700">
+    <span>Subtotal (VAT-inc)</span>
+    <span>?{{ subtotal.toFixed(2) }}</span>
+  </div>
+  <div class="flex items-center justify-between text-sm text-gray-500">
+    <span>Gross Sales (VAT-excl)</span>
+    <span>?{{ grossSalesExclVat?.toFixed(2) || total.toFixed(2) }}</span>
+  </div>
+  <div class="flex items-center justify-between text-sm text-gray-700">
+    <span>SC/PWD Discount (20%)</span>
+    <span class="text-red-600">-?{{ scPwdDiscount?.toFixed(2) || discount.toFixed(2) }}</span>
+  </div>
+  <div class="flex items-center justify-between text-sm text-gray-700">
+    <span>VAT Exemption</span>
+    <span class="text-red-600">-?{{ vatExemption?.toFixed(2) || '0.00' }}</span>
+  </div>
+  <div class="flex items-center justify-between text-sm text-gray-700">
+    <span>VAT (12% on non-SC/PWD)</span>
+    <span>?{{ vat.toFixed(2) }}</span>
+  </div>
+  <div class="mt-2 pt-2 border-t flex items-center justify-between text-lg font-bold">
+    <span>Total</span>
+    <span>?{{ total.toFixed(2) }}</span>
+  </div>
+  <div class="flex items-center justify-between text-sm text-gray-700">
+    <span>Change</span>
+    <span>?{{ change.toFixed(2) }}</span>
+  </div>
+</div>
     </aside>
 
     <!-- Main Content -->
@@ -132,10 +147,17 @@
         </div>
 
         <!-- Current Order -->
-        <div class="col-span-4 bg-white rounded-lg shadow p-6 flex flex-col">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-2xl font-bold text-gray-800">Current Order</h2>
-          </div>
+        <div class="col-span-4 bg-white rounded-xl shadow p-5 flex flex-col border border-gray-200">
+          <div class="flex items-center justify-between mb-3">
+  <h2 class="text-2xl font-bold text-gray-800">Order <span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-700 align-middle">New</span></h2>
+  <button class="text-sm text-red-500 hover:underline" @click="clearCart">Clear</button>
+</div>
+<div class="mb-3">
+  <div class="bg-gray-100 rounded-lg p-1 flex">
+    <button @click="setOrderType('dine-in')" :class="['flex-1 py-2 rounded-md', orderType==='dine-in' ? 'bg-primary text-white' : 'text-gray-700']">Dine-in</button>
+    <button @click="setOrderType('take-out')" :class="['flex-1 py-2 rounded-md', orderType==='take-out' ? 'bg-primary text-white' : 'text-gray-700']">Takeout</button>
+  </div>
+</div>
           
           <!-- Cart Items -->
           <div class="space-y-3 mb-6 flex-1 overflow-y-auto">
@@ -156,20 +178,6 @@
             </div>
             <div v-if="cart.length === 0" class="text-center text-gray-500 py-8">
               No items in cart
-            </div>
-          </div>
-
-          <!-- Order Header: Dine-in / Takeout + Clear -->
-          <div class="mb-4">
-            <div class="flex items-center justify-between mb-2">
-              <div class="text-lg font-semibold text-gray-800">Order <span class="ml-2 text-xs bg-gray-100 rounded px-2 py-0.5">New</span></div>
-              <button class="text-sm text-red-500 hover:text-red-600" @click="clearCart">Clear</button>
-            </div>
-            <div class="bg-gray-100 rounded-lg p-1 flex">
-              <button @click="setOrderType('dine-in')"
-                :class="['flex-1 py-2 rounded-md text-sm font-semibold', orderType === 'dine-in' ? 'bg-indigo-600 text-white shadow' : 'text-gray-700']">Dine-in</button>
-              <button @click="setOrderType('take-out')"
-                :class="['flex-1 py-2 rounded-md text-sm font-semibold', orderType === 'take-out' ? 'bg-indigo-600 text-white shadow' : 'text-gray-700']">Takeout</button>
             </div>
           </div>
 
@@ -217,45 +225,23 @@
             </div>
           </div>
 
-          <!-- Payment Type + Amount Received -->
+          <!-- Payment Method -->
           <div class="mb-6">
-            <div class="grid grid-cols-12 gap-3 items-center">
-              <div class="col-span-6">
-                <div class="text-xs font-semibold mb-2 text-gray-800">Payment</div>
-                <div class="flex space-x-3 mb-2">
-                  <button 
-                    v-for="method in paymentMethods" 
-                    :key="method"
-                    @click="selectedPaymentMethod = method"
-                    :class="[
-                      'px-3 py-1 rounded font-bold',
-                      selectedPaymentMethod === method 
-                        ? 'bg-indigo-600 text-white' 
-                        : 'bg-gray-200 text-gray-800'
-                    ]"
-                  >
-                    {{ method }}
-                  </button>
-                </div>
-              </div>
-              <div class="col-span-6">
-                <div class="text-xs font-semibold mb-2 text-gray-800">Amount Received</div>
-                <input v-model.number="totalAmountReceived" type="number" min="0" step="0.01" placeholder="Amount Received" class="input input-bordered w-full" />
-              </div>
-            </div>
-          </div>
-
-          <!-- PWD/Senior Discount Panel -->
-          <div class="mb-4 rounded-lg border bg-gray-50">
-            <div class="flex items-center justify-between px-4 py-3">
-              <div class="font-medium text-sm">PWD / Senior Discount</div>
-              <label class="inline-flex items-center cursor-pointer">
-                <input type="checkbox" class="toggle" v-model="pwdSeniorEnabled" />
-              </label>
-            </div>
-            <div class="px-4 pb-4 grid grid-cols-2 gap-3" v-if="pwdSeniorEnabled">
-              <input v-model.number="totalCustomers" type="number" min="1" class="input input-bordered" placeholder="Total Customers" />
-              <input v-model.number="scPwdCount" type="number" min="1" class="input input-bordered" placeholder="SC/PWD Count" />
+            <div class="text-xs font-semibold mb-2 text-gray-800">Payment Method</div>
+            <div class="flex space-x-3 mb-2">
+              <button 
+                v-for="method in paymentMethods" 
+                :key="method"
+                @click="selectedPaymentMethod = method"
+                :class="[
+                  'px-3 py-1 rounded font-bold',
+                  selectedPaymentMethod === method 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-200 text-gray-800'
+                ]"
+              >
+                {{ method }}
+              </button>
             </div>
           </div>
 
@@ -289,18 +275,14 @@
 
           <!-- Action Buttons -->
           <div class="flex flex-col gap-2 mt-auto">
-            <div class="flex items-stretch gap-2">
-              <button 
-                @click="clearCart" 
-                class="btn btn-outline text-red-600 border-red-600 font-bold bg-white hover:bg-red-50 shrink-0">
-                Clear Cart
-              </button>
-              <button 
-                @click="checkout" 
-                :disabled="cart.length === 0" 
-                class="btn btn-primary w-full grow">
-                Checkout
-              </button>
+            <div class="flex space-x-2 mb-2">
+              <button @click="setOrderType('dine-in')" :class="['btn', orderType === 'dine-in' ? 'btn-primary' : '']">Dine in</button>
+              <button @click="setOrderType('take-out')" :class="['btn', orderType === 'take-out' ? 'btn-primary' : '']">Take out</button>
+              <button class="btn" @click="showDiscountModal = true">Discount</button>
+            </div>
+            <div class="flex space-x-2">
+              <button @click="clearCart" class="btn btn-outline text-red-600 border-red-600 font-bold bg-white hover:bg-red-50">Clear Cart</button>
+              <button @click="checkout" :disabled="cart.length === 0" class="btn btn-primary">Checkout</button>
             </div>
           </div>
         </div>
@@ -734,8 +716,7 @@ async function checkout() {
           });
           if (!retry.ok) {
             const t = await retry.json().catch(()=>({}));
-            alert(`Checkout failed (${retry.status}).
-${t?.error || 'Please try again.'}`);
+            alert(`Checkout failed (${retry.status}).\n${t?.error || 'Please try again.'}`);
             return;
           }
         } else if (/Table conflict|occupied|open order/i.test(serverMsg)) {
@@ -749,8 +730,7 @@ ${t?.error || 'Please try again.'}`);
             });
             if (!retry.ok) {
               const t = await retry.json().catch(()=>({}));
-              alert(`Checkout failed (${retry.status}).
-${t?.error || 'Please try again.'}`);
+              alert(`Checkout failed (${retry.status}).\n${t?.error || 'Please try again.'}`);
               return;
             }
             response = retry;
@@ -759,21 +739,18 @@ ${t?.error || 'Please try again.'}`);
             return;
           }
         } else {
-          alert(`Checkout failed (${response.status}).
-${serverMsg}`);
+          alert(`Checkout failed (${response.status}).\n${serverMsg}`);
           return;
         }
       } else {
-        alert(`Checkout failed (${response.status}).
-${serverMsg}`);
+        alert(`Checkout failed (${response.status}).\n${serverMsg}`);
         return;
       }
     }
     const result = await response.json();
     console.log('Order created:', result);
     // Show success message with order number, table, and notes
-    const tableText = order.tableNumber ? `
-Table: ${order.tableNumber}` : '';
+    const tableText = order.tableNumber ? `\nTable: ${order.tableNumber}` : '';
     
     // Print receipt to 58mm thermal via browser
     try {
@@ -807,8 +784,7 @@ Table: ${order.tableNumber}` : '';
         console.error('Service receipt print failed:', serviceErr);
       }
     }
-    const notesText = order.notes ? `
-Notes: ${order.notes}` : '';
+    const notesText = order.notes ? `\nNotes: ${order.notes}` : '';
     alert(`Order #${result.order_number} placed successfully!${tableText}${notesText}`);
     clearCart();
     tableNumber.value = '';
@@ -842,11 +818,15 @@ const subtotal = computed(() => {
 // Inputs for counts
 const totalCustomers = ref(0);
 const pwdCount = ref(0);
-const seniorCount = ref(0);
-const scPwdCount = computed({
-  get: () => (Number(pwdCount.value||0) + Number(seniorCount.value||0)),
-  set: (v) => { pwdCount.value = Number(v)||0; seniorCount.value = 0; }
-});
+  const seniorCount = ref(0);
+  const scPwdCount = computed({
+    get: () => (Number(pwdCount.value||0) + Number(seniorCount.value||0)),
+    set: (v) => {
+      // split into pwd and senior in a neutral way (all in pwd)
+      pwdCount.value = Number(v)||0;
+      seniorCount.value = 0;
+    }
+  });
 
 // Config
 const VAT_RATE = 0.12;
@@ -1010,11 +990,11 @@ async function submitEditOrder() {
   }
 }
 
-// Ensure PWD/SC UI refs exist
-const pwdSeniorEnabled = ref(false);
-// totalCustomers already declared above in counts section
 onMounted(fetchProducts);
-</script>
+</script> 
+
+
+
 
 
 
