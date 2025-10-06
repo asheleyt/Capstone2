@@ -247,30 +247,36 @@ async function updateOrderHandler(req, res) {
 async function voidOrderHandler(req, res) {
   try {
     const { id } = req.params;
-    const { password } = req.body;
-    
-    console.log('Void order request:', { id, password });
-    
-    // Simple password validation (you can make this more secure)
-    const validPasswords = ['july 2 2004', 'pasig', 'waiter'];
-    if (!password || !validPasswords.includes(password.toLowerCase())) {
-      return res.status(401).json({ error: 'Invalid admin password' });
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Admin username and password are required' });
     }
-    
+
+    // Verify admin credentials against users table
+    const bcrypt = require('bcrypt');
+    const { findUserByUsername } = require('../models/user');
+    const adminUser = await findUserByUsername(String(username).trim());
+    if (!adminUser || !['Admin', 'SuperAdmin'].includes(adminUser.role)) {
+      return res.status(401).json({ error: 'Invalid admin credentials' });
+    }
+    const match = await bcrypt.compare(String(password), adminUser.password);
+    if (!match) {
+      return res.status(401).json({ error: 'Invalid admin credentials' });
+    }
+
     const order = await voidOrder(id);
-    
+
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
-    
-    console.log('Order voided successfully:', order);
-    
+
     // Emit voided order to KDS via socket.io
     const io = req.app.get('io');
     if (io) {
       io.emit('orderVoided', order);
     }
-    
+
     res.json(order);
   } catch (err) {
     console.error('Error voiding order:', err);

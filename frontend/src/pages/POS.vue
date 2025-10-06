@@ -937,7 +937,9 @@ function removeEditOrderItem(idx) {
 }
 
 async function voidOrder(order) {
-  const password = prompt('Enter admin password to void this sale:');
+  const username = prompt('Enter admin username to authorize void:');
+  if (!username) return;
+  const password = prompt('Enter admin password to authorize void:');
   if (!password) return;
   try {
     const res = await fetch(`http://localhost:5000/api/orders/${order.id}/void`, {
@@ -946,9 +948,16 @@ async function voidOrder(order) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ username, password })
     });
-    if (!res.ok) throw new Error('Failed to void order.');
+    if (!res.ok) {
+      let serverMsg = 'Failed to void order.';
+      try {
+        const data = await res.json();
+        serverMsg = data?.error || data?.message || serverMsg;
+      } catch (_) {}
+      throw new Error(serverMsg);
+    }
     alert('Order voided successfully.');
     fetchOrderHistory();
   } catch (e) {
