@@ -1,6 +1,13 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <AdminNavbar @show-calendar="showCalendar = true" />
+    <!-- Calendar Popup (standardized) -->
+    <div v-if="showCalendar" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[1000]" @click.self="showCalendar = false">
+      <div class="relative">
+        <button class="absolute top-2 right-2 text-gray-300 hover:text-white z-10" @click="showCalendar = false">&times;</button>
+        <CalendarPopup v-model="selectedDate" />
+      </div>
+    </div>
     <!-- Main Content -->
     <div class="p-6">
       <div class="bg-white rounded-lg shadow p-6 border">
@@ -171,12 +178,14 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import CalendarPopup from '../components/CalendarPopup.vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '../composables/useAuth';
 import AdminNavbar from '../components/AdminNavbar.vue';
 
 const router = useRouter();
 const showCalendar = ref(false);
+const selectedDate = ref(null);
 
 // Reactive data
 const activityLogs = ref([]);

@@ -33,7 +33,6 @@
           />
         </div>
         <div class="flex space-x-3 items-center">
-          <button @click="printHello" class="btn">Print Hello</button>
           <button @click="handleLogout" class="btn ml-4">Logout</button>
         </div>
       </header>
@@ -59,7 +58,7 @@
       <!-- Main Grid -->
       <div class="flex-1 grid grid-cols-12 gap-6 px-8 py-6">
         <!-- Product Grid -->
-        <div class="col-span-8 grid grid-cols-4 gap-6">
+        <div class="col-span-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start">
           <!-- Loading State -->
           <div v-if="loading" class="col-span-4 flex items-center justify-center h-64">
             <div class="text-center">
@@ -248,14 +247,18 @@
           <!-- PWD/Senior Discount Panel -->
           <div class="mb-4 rounded-lg border bg-gray-50">
             <div class="flex items-center justify-between px-4 py-3">
-              <div class="font-medium text-sm">PWD / Senior Discount</div>
+              <div class="font-medium text-sm text-gray-800">PWD / Senior Discount</div>
               <label class="inline-flex items-center cursor-pointer">
                 <input type="checkbox" class="toggle" v-model="pwdSeniorEnabled" />
               </label>
             </div>
             <div class="px-4 pb-4 grid grid-cols-2 gap-3" v-if="pwdSeniorEnabled">
-              <input v-model.number="totalCustomers" type="number" min="1" class="input input-bordered" placeholder="Total Customers" />
-              <input v-model.number="scPwdCount" type="number" min="1" class="input input-bordered" placeholder="SC/PWD Count" />
+              <label class="text-xs text-gray-700">Total Customers
+                <input v-model.number="totalCustomers" type="number" min="1" class="input input-bordered w-full mt-1" placeholder="Total Customers" />
+              </label>
+              <label class="text-xs text-gray-700">SC/PWD Count
+                <input v-model.number="scPwdCount" type="number" min="1" class="input input-bordered w-full mt-1" placeholder="SC/PWD Count" />
+              </label>
             </div>
           </div>
 
@@ -289,7 +292,7 @@
 
           <!-- Action Buttons -->
           <div class="flex flex-col gap-2 mt-auto">
-            <div class="flex items-stretch gap-2">
+            <div class="flex items-stretch gap-2 w-full">
               <button 
                 @click="clearCart" 
                 class="btn btn-outline text-red-600 border-red-600 font-bold bg-white hover:bg-red-50 shrink-0">
@@ -298,7 +301,7 @@
               <button 
                 @click="checkout" 
                 :disabled="cart.length === 0" 
-                class="btn btn-primary w-full grow">
+                class="btn btn-primary flex-1">
                 Checkout
               </button>
             </div>
@@ -532,8 +535,11 @@ async function fetchProducts() {
     if (!res.ok) throw new Error('Failed to fetch products');
     const data = await res.json();
     console.log('Fetched products:', data); // Debug log
-    products.value = data;
-    filteredProducts.value = data;
+    // Remove specific products that should no longer appear
+    const bannedNames = ['chicken inasal','gin','test salt'];
+    const cleaned = data.filter(p => !bannedNames.includes(String(p.name || '').toLowerCase()));
+    products.value = cleaned;
+    filteredProducts.value = cleaned;
   } catch (e) {
     console.error('Error fetching products:', e); // Debug log
     error.value = e.message;
@@ -544,6 +550,9 @@ async function fetchProducts() {
 
 function filterProducts() {
   let filtered = products.value;
+  // Also keep banned names out if products list ever changes at runtime
+  const bannedNames = ['chicken inasal','gin','test salt'];
+  filtered = filtered.filter(p => !bannedNames.includes(String(p.name || '').toLowerCase()));
   
   // Apply search filter
   if (searchQuery.value) {

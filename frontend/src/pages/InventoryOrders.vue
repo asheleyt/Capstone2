@@ -2,11 +2,11 @@
   <div class="min-h-screen bg-gray-50">
     <AdminNavbar @show-calendar="showCalendar = true"></AdminNavbar>
 
-    <!-- Calendar Popup -->
-    <div v-if="showCalendar" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" @click.self="showCalendar = false">
-      <div class="bg-white rounded-lg shadow-lg p-6 relative w-80">
-        <button class="absolute top-2 right-2 text-gray-500 hover:text-black" @click="showCalendar = false">&times;</button>
-        <CalendarPopup></CalendarPopup>
+    <!-- Calendar Popup (standardized) -->
+    <div v-if="showCalendar" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[1000]" @click.self="showCalendar = false">
+      <div class="relative">
+        <button class="absolute top-2 right-2 text-gray-300 hover:text-white z-10" @click="showCalendar = false">&times;</button>
+        <CalendarPopup v-model="selectedDate" />
       </div>
     </div>
 
